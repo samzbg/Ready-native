@@ -9,13 +9,22 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        HStack(spacing: 0) {
+            // Left Panel - Navigation (215px)
+            LeftPanel()
+                .frame(width: 215)
+            
+            // Middle Panel - Active Content (475px)
+            MiddlePanel()
+                .frame(width: 475)
+            
+            // Right Panel - Calendar (min 335px, expandable)
+            RightPanel()
+                .frame(minWidth: 335)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+        .ignoresSafeArea(.all)
     }
 }
 
