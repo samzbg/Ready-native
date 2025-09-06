@@ -60,7 +60,7 @@ struct LeftPanel: View {
             .padding(.vertical)
             .padding(.horizontal)
         }
-        .background(Color.white)
+        .background(Color(red: 249/255, green: 249/255, blue: 248/255))
         .gesture(WindowDragGesture())
         .onHover { hovering in
             if hovering {

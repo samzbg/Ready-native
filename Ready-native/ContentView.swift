@@ -16,7 +16,7 @@ struct ContentView: View {
             
             // Left divider
             Divider()
-                .background(Color(NSColor.separatorColor))
+                .background(Color(red: 236/255, green: 236/255, blue: 233/255))
                 .frame(width: 0.5)
                 .frame(maxHeight: .infinity)
             
@@ -26,7 +26,7 @@ struct ContentView: View {
             
             // Right divider
             Divider()
-                .background(Color(NSColor.separatorColor))
+                .background(Color(red: 236/255, green: 236/255, blue: 233/255))
                 .frame(width: 0.5)
                 .frame(maxHeight: .infinity)
             
