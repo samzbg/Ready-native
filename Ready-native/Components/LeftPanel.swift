@@ -7,6 +7,15 @@
 
 import SwiftUI
 
+struct CustomAddIcon: View {
+    var body: some View {
+        Image("AddTask")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 16, height: 16)
+    }
+}
+
 struct WindowDragGesture: Gesture {
     var body: some Gesture {
         DragGesture()
@@ -26,11 +35,20 @@ struct LeftPanel: View {
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Navigation")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        // Add new task action
+                    }) {
+                        CustomAddIcon()
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(6)
+                }
                 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .center, spacing: 8) {
                     NavigationItem(icon: "house", title: "Home")
                     NavigationItem(icon: "calendar", title: "Calendar")
                     NavigationItem(icon: "list.bullet", title: "Tasks")
@@ -39,9 +57,10 @@ struct LeftPanel: View {
                 
                 Spacer()
             }
-            .padding()
+            .padding(.vertical)
+            .padding(.horizontal)
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color.white)
         .gesture(WindowDragGesture())
         .onHover { hovering in
             if hovering {

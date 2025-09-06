@@ -16,7 +16,7 @@ struct Ready_nativeApp: App {
             ContentView()
         }
         .windowResizability(.contentSize)
-        .defaultSize(width: 1025, height: 700) // 215 + 475 + 335 = 1025
+        .defaultSize(width: 1105, height: 700) // 215 + 475 + 335 + 80 = 1105
     }
 }
 
@@ -32,7 +32,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.styleMask.insert(.resizable)
             
             // Set minimum window size to accommodate all panels
-            window.minSize = NSSize(width: 1025, height: 500) // 215 + 475 + 335 = 1025
+            window.minSize = NSSize(width: 1105, height: 500) // 215 + 475 + 335 + 80 = 1105
+            
+            // Force the window to the new size
+            var frame = window.frame
+            frame.size.width = 1105
+            window.setFrame(frame, display: true)
             
             // Add spacing around traffic light buttons
             adjustButtonPositions(in: window)

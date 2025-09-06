@@ -32,7 +32,7 @@ struct RightPanel: View {
             Spacer()
         }
         .padding()
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color.white)
     }
 }
 

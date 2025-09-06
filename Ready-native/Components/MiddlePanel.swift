@@ -20,8 +20,9 @@ struct MiddlePanel: View {
             
             Spacer()
         }
-        .padding()
-        .background(Color(NSColor.windowBackgroundColor))
+        .padding(.vertical)
+        .padding(.trailing)
+        .background(Color.white)
     }
 }
 
