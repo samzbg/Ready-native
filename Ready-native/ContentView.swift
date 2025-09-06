@@ -15,9 +15,9 @@ struct ContentView: View {
                 .frame(width: 215)
             
             // Left divider
-            Divider()
-                .background(Color(red: 236/255, green: 236/255, blue: 233/255))
-                .frame(width: 0.5)
+            Rectangle()
+                .fill(Color(red: 236/255, green: 236/255, blue: 233/255))
+                .frame(width: 1)
                 .frame(maxHeight: .infinity)
             
             // Middle Panel - Active Content (475px)
@@ -25,9 +25,9 @@ struct ContentView: View {
                 .frame(width: 475)
             
             // Right divider
-            Divider()
-                .background(Color(red: 236/255, green: 236/255, blue: 233/255))
-                .frame(width: 0.5)
+            Rectangle()
+                .fill(Color(red: 236/255, green: 236/255, blue: 233/255))
+                .frame(width: 1)
                 .frame(maxHeight: .infinity)
             
             // Right Panel - Calendar (min 335px, expandable)

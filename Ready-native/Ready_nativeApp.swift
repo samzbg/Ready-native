@@ -30,6 +30,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.titleVisibility = .hidden
             // Ensure the window is resizable
             window.styleMask.insert(.resizable)
+            // Set window background color to white
+            window.backgroundColor = NSColor.white
             
             // Set minimum window size to accommodate all panels
             window.minSize = NSSize(width: 1105, height: 500) // 215 + 475 + 335 + 80 = 1105
