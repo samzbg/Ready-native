@@ -26,6 +26,17 @@ class RightPanel: ObservableObject {
         return formatter.string(from: currentDate)
     }
     
+    var shouldShowTodayButton: Bool {
+        let calendar = Calendar.current
+        let today = Date()
+        let todayStart = calendar.startOfDay(for: today)
+        let currentStart = calendar.startOfDay(for: currentDate)
+        let nextDayStart = calendar.date(byAdding: .day, value: 1, to: currentStart) ?? currentStart
+        
+        return !calendar.isDate(todayStart, inSameDayAs: currentStart) && 
+               !calendar.isDate(todayStart, inSameDayAs: nextDayStart)
+    }
+    
     func previousDays() {
         pendingDirection = false
         // Use a small delay to avoid publishing during view updates
@@ -50,6 +61,25 @@ class RightPanel: ObservableObject {
         }
     }
     
+    func navigateToToday() {
+        let today = Date()
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: today)
+        
+        // Determine direction based on whether today is before or after current date
+        let isTodayAfter = todayStart > calendar.startOfDay(for: currentDate)
+        
+        pendingDirection = isTodayAfter
+        // Use a small delay to avoid publishing during view updates
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.isNavigatingForward = isTodayAfter
+                self.currentDate = today
+            }
+            self.pendingDirection = nil
+        }
+    }
+    
     var effectiveDirection: Bool {
         return pendingDirection ?? isNavigatingForward
     }
@@ -64,7 +94,9 @@ struct RightPanelView: View {
             HeaderView(
                 monthTitle: rightPanel.currentMonthTitle,
                 onPreviousDays: rightPanel.previousDays,
-                onNextDays: rightPanel.nextDays
+                onNextDays: rightPanel.nextDays,
+                shouldShowTodayButton: rightPanel.shouldShowTodayButton,
+                onToday: rightPanel.navigateToToday
             )
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
@@ -158,6 +190,8 @@ private struct HeaderView: View {
     var monthTitle: String
     var onPreviousDays: () -> Void
     var onNextDays: () -> Void
+    var shouldShowTodayButton: Bool
+    var onToday: () -> Void
     
     var body: some View {
         HStack(alignment: .center) {
@@ -168,6 +202,10 @@ private struct HeaderView: View {
             Spacer()
 
             HStack(spacing: 8) {
+                if shouldShowTodayButton {
+                    TodayButton(action: onToday)
+                }
+                
                 IconButton(systemName: "chevron.left", action: onPreviousDays)
                 IconButton(systemName: "chevron.right", action: onNextDays)
             }
@@ -186,6 +224,20 @@ private struct IconButton: View {
                 .foregroundColor(.primary)
         }
         .frame(width: 24, height: 24)
+        .buttonStyle(.bordered)
+    }
+}
+
+private struct TodayButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("Today")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.primary)
+        }
+        .frame(height: 24)
         .buttonStyle(.bordered)
     }
 }

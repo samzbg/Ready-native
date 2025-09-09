@@ -42,6 +42,13 @@ struct ContentView: View {
             rightPanel.nextDays()
             return .handled
         }
+        .onKeyPress { keyPress in
+            if keyPress.key == .init("t") {
+                rightPanel.navigateToToday()
+                return .handled
+            }
+            return .ignored
+        }
     }
 }
 
