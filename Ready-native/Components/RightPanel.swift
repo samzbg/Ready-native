@@ -8,16 +8,24 @@ class RightPanel: ObservableObject {
     @Published var activeMeetingId: UUID? = nil
     @Published var isNavigatingForward = true
     private var pendingDirection: Bool? = nil
+    private var cachedDays: [DayModel] = []
+    private var lastCachedDate: Date?
     
     fileprivate var currentDays: [DayModel] {
         let calendar = Calendar.current
         let firstDay = calendar.startOfDay(for: currentDate)
-        let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
         
-        return [
-            DayModel(date: firstDay),
-            DayModel(date: secondDay)
-        ]
+        // Check if we need to regenerate the cache
+        if lastCachedDate != firstDay {
+            let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
+            cachedDays = [
+                DayModel(date: firstDay),
+                DayModel(date: secondDay)
+            ]
+            lastCachedDate = firstDay
+        }
+        
+        return cachedDays
     }
     
     var currentMonthTitle: String {
@@ -441,12 +449,21 @@ private struct DayItem: Identifiable {
 }
 
 private struct Meeting: Identifiable {
-    let id = UUID()
+    let id: UUID
     var timeRange: String?
     var title: String?
     var subtitle: String?
     var detail: String?
     var isCurrent: Bool = false
+    
+    init(timeRange: String? = nil, title: String? = nil, subtitle: String? = nil, detail: String? = nil, isCurrent: Bool = false) {
+        self.id = UUID()
+        self.timeRange = timeRange
+        self.title = title
+        self.subtitle = subtitle
+        self.detail = detail
+        self.isCurrent = isCurrent
+    }
 }
 
 // MARK: - Sample Data (replace with real feed)
