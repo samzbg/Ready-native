@@ -4,17 +4,33 @@ import AppKit
 // MARK: - RightPanel (macOS)
 
 struct RightPanel: View {
-    @State private var days: [DayModel] = SampleData.days
+    @State private var allDays: [DayModel] = SampleData.days
+    @State private var currentDayIndex = 0
     @State private var activeMeetingId: UUID? = nil
+    
+    private var currentDays: [DayModel] {
+        Array(allDays.dropFirst(currentDayIndex).prefix(2))
+    }
+    
+    private var currentMonthTitle: String {
+        guard !currentDays.isEmpty else { return "September 2025" }
+        let firstDay = currentDays[0]
+        // Extract month and year from the first day's date
+        return "September 2025" // This would be calculated from actual date in a real app
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             // Fixed month header
-            HeaderView(monthTitle: "September 2025")
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                .background(Color.white)
-                .zIndex(2)
+            HeaderView(
+                monthTitle: currentMonthTitle,
+                onPreviousDays: previousDays,
+                onNextDays: nextDays
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
+            .background(Color.white)
+            .zIndex(2)
 
             // Fixed day headers
             VStack(spacing: 0) {
@@ -25,12 +41,12 @@ struct RightPanel: View {
                         .frame(width: 1)
                         .frame(height: 57)
                     
-                    HStack(alignment: .top, spacing: 0) {
-                        ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
-                            DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                        }
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
+                        DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
+                }
                 }
                 .frame(height: 57)
                 
@@ -51,7 +67,7 @@ struct RightPanel: View {
                 // Scrollable content
                 ScrollView(.vertical, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 0) {
-                        ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
+                        ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
                             DayColumnContent(
                                 day: day,
                                 index: index,
@@ -65,6 +81,20 @@ struct RightPanel: View {
         }
         .padding(.top, -18)
         .background(Color.white)
+    }
+    
+    private func previousDays() {
+        // Move to previous 2 days
+        if currentDayIndex > 0 {
+            currentDayIndex = max(0, currentDayIndex - 2)
+        }
+    }
+    
+    private func nextDays() {
+        // Move to next 2 days
+        if currentDayIndex + 2 < allDays.count {
+            currentDayIndex = min(allDays.count - 2, currentDayIndex + 2)
+        }
     }
 }
 
@@ -106,6 +136,8 @@ private struct DayColumnContent: View {
 
 private struct HeaderView: View {
     var monthTitle: String
+    var onPreviousDays: () -> Void
+    var onNextDays: () -> Void
 
     var body: some View {
         HStack(alignment: .center) {
@@ -116,8 +148,8 @@ private struct HeaderView: View {
             Spacer()
 
             HStack(spacing: 8) {
-                IconButton(systemName: "chevron.left")
-                IconButton(systemName: "chevron.right")
+                IconButton(systemName: "chevron.left", action: onPreviousDays)
+                IconButton(systemName: "chevron.right", action: onNextDays)
             }
         }
     }
@@ -125,20 +157,16 @@ private struct HeaderView: View {
 
 private struct IconButton: View {
     let systemName: String
-    var action: () -> Void = {}
+    let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 28, height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(NSColor.controlBackgroundColor))
-                )
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.primary)
         }
-        .buttonStyle(.plain)
+        .frame(width: 24, height: 24)
+        .buttonStyle(.bordered)
     }
 }
 
