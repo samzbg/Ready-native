@@ -1,15 +1,17 @@
 import SwiftUI
 import AppKit
+import GRDB
 
 // MARK: - RightPanel (macOS)
 
 class RightPanel: ObservableObject {
     @Published var currentDate = Date()
-    @Published var activeMeetingId: UUID? = nil
+    @Published var activeMeetingId: String? = nil
     @Published var isNavigatingForward = true
     private var pendingDirection: Bool? = nil
     private var cachedDays: [DayModel] = []
     private var lastCachedDate: Date?
+    private let databaseService = DatabaseService.shared
     
     fileprivate var currentDays: [DayModel] {
         let calendar = Calendar.current
@@ -18,11 +20,29 @@ class RightPanel: ObservableObject {
         // Check if we need to regenerate the cache
         if lastCachedDate != firstDay {
             let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
-            cachedDays = [
-                DayModel(date: firstDay),
-                DayModel(date: secondDay)
-            ]
-            lastCachedDate = firstDay
+            
+            do {
+                // Fetch events for both days
+                let firstDayEvents = try databaseService.getCalendarEvents(for: firstDay)
+                let secondDayEvents = try databaseService.getCalendarEvents(for: secondDay)
+                
+                print("📅 Fetched \(firstDayEvents.count) events for \(firstDay)")
+                print("📅 Fetched \(secondDayEvents.count) events for \(secondDay)")
+                
+                cachedDays = [
+                    DayModel(date: firstDay, events: firstDayEvents),
+                    DayModel(date: secondDay, events: secondDayEvents)
+                ]
+                lastCachedDate = firstDay
+            } catch {
+                print("❌ Error fetching calendar events: \(error)")
+                // Fallback to empty events
+                cachedDays = [
+                    DayModel(date: firstDay, events: []),
+                    DayModel(date: secondDay, events: [])
+                ]
+                lastCachedDate = firstDay
+            }
         }
         
         return cachedDays
@@ -96,6 +116,17 @@ class RightPanel: ObservableObject {
         }
     }
     
+    func toggleEventActive(_ eventId: String) {
+        do {
+            try databaseService.toggleEventActive(eventId)
+            // Clear cache to force refresh
+            lastCachedDate = nil
+        } catch {
+            print("Error toggling event active state: \(error)")
+        }
+    }
+    
+    
     var effectiveDirection: Bool {
         return pendingDirection ?? isNavigatingForward
     }
@@ -140,7 +171,8 @@ struct RightPanelView: View {
                             DayColumnContent(
                                 day: day,
                                 index: index,
-                                activeMeetingId: $rightPanel.activeMeetingId
+                                activeMeetingId: $rightPanel.activeMeetingId,
+                                rightPanel: rightPanel
                             )
                         }
                     }
@@ -171,16 +203,18 @@ struct RightPanelView: View {
 private struct DayColumnContent: View {
     let day: DayModel
     let index: Int
-    @Binding var activeMeetingId: UUID?
+    @Binding var activeMeetingId: String?
+    let rightPanel: RightPanel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(day.items) { item in
+            ForEach(day.items, id: \.id) { item in
                 switch item.kind {
                 case .meeting(let meeting):
                     MeetingCard(meeting: meeting, isActive: activeMeetingId == meeting.id, onToggle: {
                         withAnimation(.easeOut(duration: 0.2)) {
                             activeMeetingId = activeMeetingId == meeting.id ? nil : meeting.id
+                            rightPanel.toggleEventActive(meeting.id)
                         }
                     })
                 case .banner(let text):
@@ -262,8 +296,8 @@ private struct TodayButton: View {
 
 private struct DayColumnView: View {
     let day: DayModel
-    let activeMeetingId: UUID?
-    let onMeetingToggle: (UUID) -> Void
+    let activeMeetingId: String?
+    let onMeetingToggle: (String) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -272,7 +306,7 @@ private struct DayColumnView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(day.items) { item in
+                ForEach(day.items, id: \.id) { item in
                     switch item.kind {
                     case .meeting(let meeting):
                         MeetingCard(meeting: meeting, isActive: activeMeetingId == meeting.id, onToggle: {
@@ -432,7 +466,7 @@ private struct DayModel: Identifiable {
     let isToday: Bool
     var items: [DayItem]
     
-    init(date: Date) {
+    init(date: Date, events: [CalendarEvent] = []) {
         self.date = date
         let calendar = Calendar.current
         let formatter = DateFormatter()
@@ -441,7 +475,99 @@ private struct DayModel: Identifiable {
         self.weekday = formatter.string(from: date)
         self.dayNumber = calendar.component(.day, from: date)
         self.isToday = calendar.isDateInToday(date)
-        self.items = SampleData.generateItemsForDate(date)
+        self.items = Self.generateItemsFromEvents(events, for: date)
+    }
+    
+    static func generateItemsFromEvents(_ events: [CalendarEvent], for date: Date) -> [DayItem] {
+        let calendar = Calendar.current
+        let dayOfWeek = calendar.component(.weekday, from: date)
+        
+        var items: [DayItem] = []
+        
+        // Add meetings for weekdays
+        if dayOfWeek >= 2 && dayOfWeek <= 6 { // Monday to Friday
+            // Sort events by start time
+            let sortedEvents = events.compactMap { event -> (CalendarEvent, Date)? in
+                guard let startDateTime = event.start?.dateTime,
+                      let startDate = ISO8601DateFormatter().date(from: startDateTime),
+                      calendar.isDate(startDate, inSameDayAs: date) else {
+                    return nil
+                }
+                return (event, startDate)
+            }.sorted { $0.1 < $1.1 }
+            
+            // Add meetings and calculate breaks between them
+            for (index, (event, _)) in sortedEvents.enumerated() {
+                let meeting = Meeting(
+                    id: event.id,
+                    timeRange: formatTimeRange(start: event.start, end: event.end),
+                    title: event.summary,
+                    detail: event.description,
+                    isCurrent: false
+                )
+                items.append(DayItem(id: UUID(), kind: .meeting(meeting)))
+                
+                // Add break note between consecutive meetings
+                if index < sortedEvents.count - 1 {
+                    let currentEvent = event
+                    let nextEvent = sortedEvents[index + 1].0
+                    
+                    if let breakDuration = calculateBreakDuration(
+                        currentEventEnd: currentEvent.end,
+                        nextEventStart: nextEvent.start
+                    ) {
+                        let breakText = formatBreakDuration(breakDuration)
+                        items.append(DayItem(id: UUID(), kind: .breakNote(breakText)))
+                    }
+                }
+            }
+        }
+        
+        return items
+    }
+    
+    private static func calculateBreakDuration(currentEventEnd: EventDateTime?, nextEventStart: EventDateTime?) -> TimeInterval? {
+        guard let currentEndTime = currentEventEnd?.dateTime,
+              let nextStartTime = nextEventStart?.dateTime,
+              let currentEndDate = ISO8601DateFormatter().date(from: currentEndTime),
+              let nextStartDate = ISO8601DateFormatter().date(from: nextStartTime) else {
+            return nil
+        }
+        
+        let breakDuration = nextStartDate.timeIntervalSince(currentEndDate)
+        return breakDuration > 0 ? breakDuration : nil
+    }
+    
+    private static func formatBreakDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration.truncatingRemainder(dividingBy: 3600)) / 60
+        
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m break"
+        } else if hours > 0 {
+            return "\(hours)h break"
+        } else if minutes > 0 {
+            return "\(minutes)m break"
+        } else {
+            return "No break"
+        }
+    }
+    
+    private static func formatTimeRange(start: EventDateTime?, end: EventDateTime?) -> String? {
+        guard let startTime = start?.dateTime,
+              let endTime = end?.dateTime,
+              let startDate = ISO8601DateFormatter().date(from: startTime),
+              let endDate = ISO8601DateFormatter().date(from: endTime) else {
+            return nil
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        
+        let startFormatted = formatter.string(from: startDate)
+        let endFormatted = formatter.string(from: endDate)
+        
+        return "\(startFormatted) – \(endFormatted)"
     }
 }
 
@@ -452,20 +578,25 @@ private struct DayItem: Identifiable {
         case breakNote(String)
     }
 
-    let id = UUID()
+    let id: UUID
     let kind: Kind
+    
+    init(id: UUID, kind: Kind) {
+        self.id = id
+        self.kind = kind
+    }
 }
 
 private struct Meeting: Identifiable {
-    let id: UUID
+    let id: String
     var timeRange: String?
     var title: String?
     var subtitle: String?
     var detail: String?
     var isCurrent: Bool = false
     
-    init(timeRange: String? = nil, title: String? = nil, subtitle: String? = nil, detail: String? = nil, isCurrent: Bool = false) {
-        self.id = UUID()
+    init(id: String, timeRange: String? = nil, title: String? = nil, subtitle: String? = nil, detail: String? = nil, isCurrent: Bool = false) {
+        self.id = id
         self.timeRange = timeRange
         self.title = title
         self.subtitle = subtitle
@@ -474,39 +605,6 @@ private struct Meeting: Identifiable {
     }
 }
 
-// MARK: - Sample Data (replace with real feed)
-
-private enum SampleData {
-    static func generateItemsForDate(_ date: Date) -> [DayItem] {
-        let calendar = Calendar.current
-        let isToday = calendar.isDateInToday(date)
-        let dayOfWeek = calendar.component(.weekday, from: date)
-        
-        // Generate different sample data based on the day
-        var items: [DayItem] = []
-        
-        // Add some meetings for demonstration
-        if dayOfWeek >= 2 && dayOfWeek <= 6 { // Monday to Friday
-            items.append(.init(kind: .meeting(Meeting(
-                timeRange: "9:00 – 10:00 AM",
-                title: "Team Standup",
-                detail: "Daily team synchronization meeting to discuss progress and blockers."
-            ))))
-            
-            items.append(.init(kind: .breakNote("1 hour break")))
-            
-            items.append(.init(kind: .meeting(Meeting(
-                timeRange: "11:00 AM – 12:00 PM",
-                title: "Client Meeting",
-                detail: "Weekly client check-in to review project status and address any concerns."
-            ))))
-            
-        }
-        
-        return items
-    }
-    
-}
 
 // MARK: - Preview
 

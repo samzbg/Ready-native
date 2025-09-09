@@ -22,6 +22,9 @@ struct Ready_nativeApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Initialize database and sample data
+        AppInitializationService.shared.initializeApp()
+        
         // Access the main window
         if let window = NSApplication.shared.windows.first {
             // Make the title bar transparent
