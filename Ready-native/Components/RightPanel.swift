@@ -66,11 +66,11 @@ class RightPanel: ObservableObject {
     }
     
     func previousDays() {
+        isNavigatingForward = false
         pendingDirection = false
         // Use a small delay to avoid publishing during view updates
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
             withAnimation(.easeInOut(duration: 0.2)) {
-                self.isNavigatingForward = false
                 self.currentDate = Calendar.current.date(byAdding: .day, value: -2, to: self.currentDate) ?? self.currentDate
             }
             self.pendingDirection = nil
@@ -78,11 +78,11 @@ class RightPanel: ObservableObject {
     }
     
     func nextDays() {
+        isNavigatingForward = true
         pendingDirection = true
         // Use a small delay to avoid publishing during view updates
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
             withAnimation(.easeInOut(duration: 0.2)) {
-                self.isNavigatingForward = true
                 self.currentDate = Calendar.current.date(byAdding: .day, value: 2, to: self.currentDate) ?? self.currentDate
             }
             self.pendingDirection = nil
@@ -105,11 +105,11 @@ class RightPanel: ObservableObject {
         // Determine direction based on whether today is before or after current date
         let isTodayAfter = todayStart > currentStart
         
+        isNavigatingForward = isTodayAfter
         pendingDirection = isTodayAfter
         // Use a small delay to avoid publishing during view updates
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
             withAnimation(.easeInOut(duration: 0.2)) {
-                self.isNavigatingForward = isTodayAfter
                 self.currentDate = today
             }
             self.pendingDirection = nil
