@@ -326,25 +326,24 @@ private struct DayHeaderView: View {
     let isToday: Bool
     
     var body: some View {
-        HStack(alignment: .center, spacing: isToday ? 4 : 1) {
+        HStack(alignment: .center, spacing: isToday ? 4 : 3.5) {
             Text(weekday)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 13, weight: .regular))
                 .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
 
-            ZStack {
-                if isToday {
+            if isToday {
+                ZStack {
                     Circle()
                         .fill(Color(red: 181/255, green: 90/255, blue: 75/255))
-                        .frame(width: 28, height: 28)
-                } else {
-                    // Invisible circle to maintain consistent spacing
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 29, height: 29)
+                    Text("\(dayNumber)")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.white)
                 }
+            } else {
                 Text("\(dayNumber)")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(isToday ? .white : Color(red: 74/255, green: 73/255, blue: 71/255))
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
             }
         }
         .frame(height: 58)
