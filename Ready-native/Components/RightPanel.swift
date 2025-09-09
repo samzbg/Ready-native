@@ -4,50 +4,49 @@ import AppKit
 // MARK: - RightPanel (macOS)
 
 class RightPanel: ObservableObject {
-    @Published fileprivate var allDays: [DayModel] = SampleData.days
-    @Published var currentDayIndex = 0
+    @Published var currentDate = Date()
     @Published var activeMeetingId: UUID? = nil
     @Published var isNavigatingForward = true
     private var pendingDirection: Bool? = nil
     
     fileprivate var currentDays: [DayModel] {
-        Array(allDays.dropFirst(currentDayIndex).prefix(2))
+        let calendar = Calendar.current
+        let firstDay = calendar.startOfDay(for: currentDate)
+        let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
+        
+        return [
+            DayModel(date: firstDay),
+            DayModel(date: secondDay)
+        ]
     }
     
     var currentMonthTitle: String {
-        guard !currentDays.isEmpty else { return "September 2025" }
-        let firstDay = currentDays[0]
-        // Extract month and year from the first day's date
-        return "September 2025" // This would be calculated from actual date in a real app
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: currentDate)
     }
     
     func previousDays() {
-        // Move to previous 2 days
-        if currentDayIndex > 0 {
-            pendingDirection = false
-            // Use a small delay to avoid publishing during view updates
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    self.isNavigatingForward = false
-                    self.currentDayIndex = max(0, self.currentDayIndex - 2)
-                }
-                self.pendingDirection = nil
+        pendingDirection = false
+        // Use a small delay to avoid publishing during view updates
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.isNavigatingForward = false
+                self.currentDate = Calendar.current.date(byAdding: .day, value: -2, to: self.currentDate) ?? self.currentDate
             }
+            self.pendingDirection = nil
         }
     }
     
     func nextDays() {
-        // Move to next 2 days
-        if currentDayIndex + 2 < allDays.count {
-            pendingDirection = true
-            // Use a small delay to avoid publishing during view updates
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    self.isNavigatingForward = true
-                    self.currentDayIndex = min(self.allDays.count - 2, self.currentDayIndex + 2)
-                }
-                self.pendingDirection = nil
+        pendingDirection = true
+        // Use a small delay to avoid publishing during view updates
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.isNavigatingForward = true
+                self.currentDate = Calendar.current.date(byAdding: .day, value: 2, to: self.currentDate) ?? self.currentDate
             }
+            self.pendingDirection = nil
         }
     }
     
@@ -107,7 +106,7 @@ struct RightPanelView: View {
                     .frame(maxHeight: .infinity),
                 alignment: .center
             )
-            .id("\(rightPanel.currentDayIndex)-\(rightPanel.effectiveDirection)") // Force re-creation to trigger animation
+            .id("\(rightPanel.currentDate.timeIntervalSince1970)-\(rightPanel.effectiveDirection)") // Force re-creation to trigger animation
             .transition(.asymmetric(
                 insertion: rightPanel.effectiveDirection ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
                 removal: rightPanel.effectiveDirection ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
@@ -359,10 +358,23 @@ private struct MeetingCard: View {
 
 private struct DayModel: Identifiable {
     let id = UUID()
+    let date: Date
     let weekday: String
     let dayNumber: Int
     let isToday: Bool
     var items: [DayItem]
+    
+    init(date: Date) {
+        self.date = date
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E" // Mon, Tue, etc.
+        
+        self.weekday = formatter.string(from: date)
+        self.dayNumber = calendar.component(.day, from: date)
+        self.isToday = calendar.isDateInToday(date)
+        self.items = SampleData.generateItemsForDate(date)
+    }
 }
 
 private struct DayItem: Identifiable {
@@ -388,135 +400,35 @@ private struct Meeting: Identifiable {
 // MARK: - Sample Data (replace with real feed)
 
 private enum SampleData {
-    static let days: [DayModel] = {
-        let kurtDetail =
-        """
-        Kurt mentioned wanting to spend more time outdoors, so you scheduled a hike at Mount Tamalpais. The plan is to continue your conversation from last week's call about early-stage product strategy and potential collaborators.
-        """
+    static func generateItemsForDate(_ date: Date) -> [DayItem] {
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(date)
+        let dayOfWeek = calendar.component(.weekday, from: date)
         
-        let sarahDetail =
-        """
-        Sarah reached out via LinkedIn after seeing your post about the new product launch. She's interested in discussing potential partnership opportunities between her startup and your company. She was referred by mutual connection Alex Chen.
-        """
+        // Generate different sample data based on the day
+        var items: [DayItem] = []
         
-        let designDetail =
-        """
-        Weekly design review session with the product team. We'll be reviewing the new user interface mockups for the mobile app and discussing feedback from last week's user testing sessions. Bring your laptop for live demos.
-        """
-        
-        let clientDetail =
-        """
-        Quarterly business review with TechCorp. They've been our biggest client for 2 years and this meeting will cover contract renewal discussions, upcoming project roadmap, and addressing their recent concerns about response times.
-        """
-        
-        let standupDetail =
-        """
-        Daily standup with the engineering team. We'll review yesterday's progress, discuss any blockers, and plan today's tasks. Focus on the authentication system bug that was reported yesterday.
-        """
-        
-        let strategyDetail =
-        """
-        Monthly strategy session with the leadership team. We'll be reviewing Q4 performance metrics, discussing budget allocation for next quarter, and planning the company retreat in March. Sarah will present the marketing proposal.
-        """
-        
-        let codeReviewDetail =
-        """
-        Code review session for the new payment integration feature. We'll be going through the pull requests from the last sprint and ensuring code quality standards. Focus on security best practices and performance optimization.
-        """
-        
-        let investorDetail =
-        """
-        Investor update call with our lead investor from Sequoia Capital. We'll be discussing our Q4 growth metrics, upcoming product launches, and the Series B funding round that's planned for next quarter.
-        """
-
-        let monday = DayModel(
-            weekday: "Mon",
-            dayNumber: 1,
-            isToday: true,
-            items: [
-                .init(kind: .meeting(Meeting(timeRange: "8 – 9 AM",
-                                             title: "Daily Standup",
-                                             detail: standupDetail))),
-                .init(kind: .breakNote("1 hour break")),
-                .init(kind: .meeting(Meeting(timeRange: "11:45 AM – 1 PM",
-                                             title: "1:1 w/Kurt",
-                                             detail: kurtDetail,
-                                             isCurrent: true))),
-                .init(kind: .breakNote("30 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "1:30 – 2:45 PM",
-                                             title: "Design Review",
-                                             detail: designDetail))),
-                .init(kind: .breakNote("15 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "3:00 – 4:00 PM",
-                                             title: "Client Call - TechCorp",
-                                             detail: clientDetail))),
-                .init(kind: .breakNote("15 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "4:15 – 5:00 PM",
-                                             title: "Code Review Session",
-                                             detail: codeReviewDetail))),
-                .init(kind: .breakNote("30 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "5:30 – 6:30 PM",
-                                             title: "Strategy Planning",
-                                             detail: strategyDetail)))
-            ])
-
-        let tuesday = DayModel(
-            weekday: "Tue",
-            dayNumber: 2,
-            isToday: false,
-            items: [
-                .init(kind: .meeting(Meeting(timeRange: "9:00 – 10:00 AM",
-                                             title: "Sarah - Partnership Discussion",
-                                             detail: sarahDetail))),
-                .init(kind: .breakNote("1 hour break")),
-                .init(kind: .meeting(Meeting(timeRange: "11:00 AM – 12:00 PM",
-                                             title: "Team Sync",
-                                             detail: "Weekly team synchronization meeting to align on priorities and discuss any cross-team dependencies."))),
-                .init(kind: .breakNote("2 hour break")),
-                .init(kind: .meeting(Meeting(timeRange: "2:00 – 3:00 PM",
-                                             title: "Investor Update Call",
-                                             detail: investorDetail))),
-                .init(kind: .breakNote("30 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "3:30 – 4:30 PM",
-                                             title: "Product Demo Prep",
-                                             detail: "Preparation session for tomorrow's product demo to potential clients. Reviewing slides and practicing the presentation flow."))),
-                .init(kind: .breakNote("30 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "5:00 – 6:00 PM",
-                                             title: "Engineering Retrospective",
-                                             detail: "Monthly retrospective with the engineering team to discuss what went well, what didn't, and how we can improve our processes.")))
-            ])
-
-        let more = (3...8).map { n in
-            DayModel(
-                weekday: weekday(for: n),
-                dayNumber: n,
-                isToday: false,
-                items: [
-                    .init(kind: .meeting(Meeting(timeRange: "9:00 – 10:00 AM",
-                                                 title: "Morning Sync",
-                                                 detail: "Daily synchronization meeting with the product team to discuss priorities and blockers."))),
-                    .init(kind: .breakNote("1 hour break")),
-                    .init(kind: .meeting(Meeting(timeRange: "11:00 AM – 12:00 PM",
-                                                 title: "Client Workshop",
-                                                 detail: "Interactive workshop with key clients to gather feedback on our latest features and understand their needs better."))),
-                    .init(kind: .breakNote("2 hour break")),
-                    .init(kind: .meeting(Meeting(timeRange: "2:00 – 3:00 PM",
-                                                 title: "Technical Architecture Review",
-                                                 detail: "Deep dive into our system architecture with the senior engineers to plan scalability improvements."))),
-                    .init(kind: .breakNote("1 hour break")),
-                    .init(kind: .meeting(Meeting(timeRange: "4:00 – 5:00 PM",
-                                                 title: "Marketing Planning",
-                                                 detail: "Quarterly marketing planning session to align on campaigns, content strategy, and brand positioning.")))
-                ])
+        // Add some meetings for demonstration
+        if dayOfWeek >= 2 && dayOfWeek <= 6 { // Monday to Friday
+            items.append(.init(kind: .meeting(Meeting(
+                timeRange: "9:00 – 10:00 AM",
+                title: "Team Standup",
+                detail: "Daily team synchronization meeting to discuss progress and blockers."
+            ))))
+            
+            items.append(.init(kind: .breakNote("1 hour break")))
+            
+            items.append(.init(kind: .meeting(Meeting(
+                timeRange: "11:00 AM – 12:00 PM",
+                title: "Client Meeting",
+                detail: "Weekly client check-in to review project status and address any concerns."
+            ))))
+            
         }
-
-        return [monday, tuesday] + more
-    }()
-
-    private static func weekday(for day: Int) -> String {
-        let names = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-        return names[(day - 1) % names.count]
+        
+        return items
     }
+    
 }
 
 // MARK: - Preview
