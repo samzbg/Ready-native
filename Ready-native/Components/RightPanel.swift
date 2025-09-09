@@ -73,9 +73,17 @@ class RightPanel: ObservableObject {
         let today = Date()
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: today)
+        let currentStart = calendar.startOfDay(for: currentDate)
+        let nextDayStart = calendar.date(byAdding: .day, value: 1, to: currentStart) ?? currentStart
+        
+        // Check if today is already in the current view
+        if calendar.isDate(todayStart, inSameDayAs: currentStart) || 
+           calendar.isDate(todayStart, inSameDayAs: nextDayStart) {
+            return // Today is already visible, do nothing
+        }
         
         // Determine direction based on whether today is before or after current date
-        let isTodayAfter = todayStart > calendar.startOfDay(for: currentDate)
+        let isTodayAfter = todayStart > currentStart
         
         pendingDirection = isTodayAfter
         // Use a small delay to avoid publishing during view updates

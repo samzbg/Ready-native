@@ -30,6 +30,7 @@ struct ContentView: View {
         .background(Color.white)
         .ignoresSafeArea(.all)
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(.leftArrow) {
             // Check if middle panel should handle this first
             // For now, always handle calendar navigation
