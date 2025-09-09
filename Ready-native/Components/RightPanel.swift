@@ -9,60 +9,96 @@ struct RightPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Fixed month header
             HeaderView(monthTitle: "September 2025")
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
+                .background(Color.white)
+                .zIndex(2)
 
+            // Fixed day headers
             VStack(spacing: 0) {
-                // Day headers with full width
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
-                        DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                ZStack(alignment: .center) {
+                    // Vertical divider between day headers
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 1)
+                        .frame(height: 57)
+                    
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
+                            DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
                     }
                 }
+                .frame(height: 57)
                 
                 // Full width horizontal divider
                 Divider()
+            }
+            .background(Color.white)
+            .zIndex(2)
+            
+            // Scrollable content area with full-height vertical divider
+            ZStack(alignment: .center) {
+                // Vertical divider that spans full height
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity)
                 
-                // Day content with same spacing
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(day.items) { item in
-                                switch item.kind {
-                                case .meeting(let meeting):
-                                    MeetingCard(meeting: meeting, isActive: activeMeetingId == meeting.id, onToggle: {
-                                        withAnimation(.easeOut(duration: 0.2)) {
-                                            activeMeetingId = activeMeetingId == meeting.id ? nil : meeting.id
-                                        }
-                                    })
-                                case .banner(let text):
-                                    InlineBanner(text: text)
-                                case .breakNote(let text):
-                                    BreakNote(text: text)
-                                }
-                            }
-                            
-                            Spacer(minLength: 0)
+                // Scrollable content
+                ScrollView(.vertical, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(Array(days.prefix(2).enumerated()), id: \.element.id) { index, day in
+                            DayColumnContent(
+                                day: day,
+                                index: index,
+                                activeMeetingId: $activeMeetingId
+                            )
                         }
-                        .padding(.leading, index == 0 ? 16 : 8)
-                        .padding(.trailing, index == 1 ? 16 : 8)
-                        .padding(.top, 8)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
             }
-            .overlay(
-                // Center vertical divider
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1),
-                alignment: .center
-            )
+            .background(Color.white)
         }
         .padding(.top, -18)
         .background(Color.white)
+    }
+}
+
+// MARK: - Day Column Content
+
+private struct DayColumnContent: View {
+    let day: DayModel
+    let index: Int
+    @Binding var activeMeetingId: UUID?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(day.items) { item in
+                switch item.kind {
+                case .meeting(let meeting):
+                    MeetingCard(meeting: meeting, isActive: activeMeetingId == meeting.id, onToggle: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            activeMeetingId = activeMeetingId == meeting.id ? nil : meeting.id
+                        }
+                    })
+                case .banner(let text):
+                    InlineBanner(text: text)
+                case .breakNote(let text):
+                    BreakNote(text: text)
+                }
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, index == 0 ? 16 : 8)
+        .padding(.trailing, index == 1 ? 16 : 8)
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
@@ -75,7 +111,7 @@ private struct HeaderView: View {
         HStack(alignment: .center) {
             Text(monthTitle)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
 
             Spacer()
 
@@ -148,7 +184,7 @@ private struct DayHeaderView: View {
         HStack(alignment: .center, spacing: isToday ? 4 : 1) {
             Text(weekday)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.primary)
+                .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
 
             ZStack {
                 if isToday {
@@ -163,7 +199,7 @@ private struct DayHeaderView: View {
                 }
                 Text("\(dayNumber)")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(isToday ? .white : .primary)
+                    .foregroundColor(isToday ? .white : Color(red: 74/255, green: 73/255, blue: 71/255))
             }
         }
         .frame(height: 58)
@@ -179,7 +215,7 @@ private struct InlineBanner: View {
     var body: some View {
         Text(text)
             .font(.system(size: 13, weight: .regular))
-            .foregroundColor(Color(red: 166/255, green: 156/255, blue: 142/255))
+            .foregroundColor(Color(red: 181/255, green: 90/255, blue: 75/255))
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(height: 50)
     }
@@ -200,26 +236,41 @@ private struct MeetingCard: View {
     let meeting: Meeting
     let isActive: Bool
     let onToggle: () -> Void
+    @State private var isHovered = false
+
+    private var backgroundColor: Color {
+        if isActive {
+            return Color(red: 236/255, green: 236/255, blue: 234/255)
+        } else if isHovered {
+            return Color(red: 243/255, green: 243/255, blue: 242/255)
+        } else {
+            return Color(red: 249/255, green: 249/255, blue: 248/255)
+        }
+    }
+    
+    private var borderColor: Color {
+        isActive ? Color(red: 90/255, green: 89/255, blue: 87/255) : Color(red: 230/255, green: 230/255, blue: 230/255)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             if let time = meeting.timeRange {
                 Text(time)
                     .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                    .foregroundColor(textColor)
             }
 
             if let title = meeting.title {
                 Text(title)
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                    .foregroundColor(textColor)
                     .lineLimit(1)
             }
 
             if let detail = meeting.detail, isActive {
                 Text(detail)
                     .font(.system(size: 12))
-                    .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                    .foregroundColor(textColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(2)
                     .padding(.top, 3)
@@ -233,11 +284,11 @@ private struct MeetingCard: View {
         .frame(height: isActive ? nil : 45, alignment: .top)
         .background(
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(isActive ? Color(red: 236/255, green: 236/255, blue: 234/255) : Color(red: 249/255, green: 249/255, blue: 248/255))
+                .fill(backgroundColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(Color(red: 90/255, green: 89/255, blue: 87/255))
+                .fill(borderColor)
                 .frame(width: 5)
                 .mask(
                     Rectangle()
@@ -246,9 +297,12 @@ private struct MeetingCard: View {
                 ),
             alignment: .leading
         )
-        .onTapGesture {
-            onToggle()
-        }
+        .onTapGesture(perform: onToggle)
+        .onHover { isHovered = $0 }
+    }
+    
+    private var textColor: Color {
+        Color(red: 74/255, green: 73/255, blue: 71/255)
     }
 }
 
@@ -288,7 +342,42 @@ private enum SampleData {
     static let days: [DayModel] = {
         let kurtDetail =
         """
-        Kurt mentioned wanting to spend more time outdoors, so you scheduled a hike at Mount Tamalpais. The plan is to continue your conversation from last week’s call about early-stage product strategy and potential collaborators.
+        Kurt mentioned wanting to spend more time outdoors, so you scheduled a hike at Mount Tamalpais. The plan is to continue your conversation from last week's call about early-stage product strategy and potential collaborators.
+        """
+        
+        let sarahDetail =
+        """
+        Sarah reached out via LinkedIn after seeing your post about the new product launch. She's interested in discussing potential partnership opportunities between her startup and your company. She was referred by mutual connection Alex Chen.
+        """
+        
+        let designDetail =
+        """
+        Weekly design review session with the product team. We'll be reviewing the new user interface mockups for the mobile app and discussing feedback from last week's user testing sessions. Bring your laptop for live demos.
+        """
+        
+        let clientDetail =
+        """
+        Quarterly business review with TechCorp. They've been our biggest client for 2 years and this meeting will cover contract renewal discussions, upcoming project roadmap, and addressing their recent concerns about response times.
+        """
+        
+        let standupDetail =
+        """
+        Daily standup with the engineering team. We'll review yesterday's progress, discuss any blockers, and plan today's tasks. Focus on the authentication system bug that was reported yesterday.
+        """
+        
+        let strategyDetail =
+        """
+        Monthly strategy session with the leadership team. We'll be reviewing Q4 performance metrics, discussing budget allocation for next quarter, and planning the company retreat in March. Sarah will present the marketing proposal.
+        """
+        
+        let codeReviewDetail =
+        """
+        Code review session for the new payment integration feature. We'll be going through the pull requests from the last sprint and ensuring code quality standards. Focus on security best practices and performance optimization.
+        """
+        
+        let investorDetail =
+        """
+        Investor update call with our lead investor from Sequoia Capital. We'll be discussing our Q4 growth metrics, upcoming product launches, and the Series B funding round that's planned for next quarter.
         """
 
         let monday = DayModel(
@@ -297,18 +386,29 @@ private enum SampleData {
             isToday: true,
             items: [
                 .init(kind: .meeting(Meeting(timeRange: "8 – 9 AM",
-                                             title: "Team check-in"))),
-                .init(kind: .banner("Next meeting in 1 min")),
+                                             title: "Daily Standup",
+                                             detail: standupDetail))),
+                .init(kind: .breakNote("1 hour break")),
                 .init(kind: .meeting(Meeting(timeRange: "11:45 AM – 1 PM",
                                              title: "1:1 w/Kurt",
                                              detail: kurtDetail,
                                              isCurrent: true))),
                 .init(kind: .breakNote("30 min break")),
                 .init(kind: .meeting(Meeting(timeRange: "1:30 – 2:45 PM",
-                                             title: "Meeting name"))),
+                                             title: "Design Review",
+                                             detail: designDetail))),
+                .init(kind: .breakNote("15 min break")),
+                .init(kind: .meeting(Meeting(timeRange: "3:00 – 4:00 PM",
+                                             title: "Client Call - TechCorp",
+                                             detail: clientDetail))),
+                .init(kind: .breakNote("15 min break")),
+                .init(kind: .meeting(Meeting(timeRange: "4:15 – 5:00 PM",
+                                             title: "Code Review Session",
+                                             detail: codeReviewDetail))),
                 .init(kind: .breakNote("30 min break")),
-                .init(kind: .meeting(Meeting(timeRange: "3:30 – 4:45 PM",
-                                             title: "Meeting name")))
+                .init(kind: .meeting(Meeting(timeRange: "5:30 – 6:30 PM",
+                                             title: "Strategy Planning",
+                                             detail: strategyDetail)))
             ])
 
         let tuesday = DayModel(
@@ -316,9 +416,25 @@ private enum SampleData {
             dayNumber: 2,
             isToday: false,
             items: [
-                .init(kind: .meeting(Meeting(timeRange: "8 – 9 AM", title: "Meeting name"))),
+                .init(kind: .meeting(Meeting(timeRange: "9:00 – 10:00 AM",
+                                             title: "Sarah - Partnership Discussion",
+                                             detail: sarahDetail))),
                 .init(kind: .breakNote("1 hour break")),
-                .init(kind: .meeting(Meeting(timeRange: "9 – 10:30 AM", title: "Meeting name")))
+                .init(kind: .meeting(Meeting(timeRange: "11:00 AM – 12:00 PM",
+                                             title: "Team Sync",
+                                             detail: "Weekly team synchronization meeting to align on priorities and discuss any cross-team dependencies."))),
+                .init(kind: .breakNote("2 hour break")),
+                .init(kind: .meeting(Meeting(timeRange: "2:00 – 3:00 PM",
+                                             title: "Investor Update Call",
+                                             detail: investorDetail))),
+                .init(kind: .breakNote("30 min break")),
+                .init(kind: .meeting(Meeting(timeRange: "3:30 – 4:30 PM",
+                                             title: "Product Demo Prep",
+                                             detail: "Preparation session for tomorrow's product demo to potential clients. Reviewing slides and practicing the presentation flow."))),
+                .init(kind: .breakNote("30 min break")),
+                .init(kind: .meeting(Meeting(timeRange: "5:00 – 6:00 PM",
+                                             title: "Engineering Retrospective",
+                                             detail: "Monthly retrospective with the engineering team to discuss what went well, what didn't, and how we can improve our processes.")))
             ])
 
         let more = (3...8).map { n in
@@ -327,8 +443,21 @@ private enum SampleData {
                 dayNumber: n,
                 isToday: false,
                 items: [
-                    .init(kind: .meeting(Meeting(timeRange: "9 – 10 AM", title: "Sync"))),
-                    .init(kind: .meeting(Meeting(timeRange: "1 – 2 PM", title: "Deep work")))
+                    .init(kind: .meeting(Meeting(timeRange: "9:00 – 10:00 AM",
+                                                 title: "Morning Sync",
+                                                 detail: "Daily synchronization meeting with the product team to discuss priorities and blockers."))),
+                    .init(kind: .breakNote("1 hour break")),
+                    .init(kind: .meeting(Meeting(timeRange: "11:00 AM – 12:00 PM",
+                                                 title: "Client Workshop",
+                                                 detail: "Interactive workshop with key clients to gather feedback on our latest features and understand their needs better."))),
+                    .init(kind: .breakNote("2 hour break")),
+                    .init(kind: .meeting(Meeting(timeRange: "2:00 – 3:00 PM",
+                                                 title: "Technical Architecture Review",
+                                                 detail: "Deep dive into our system architecture with the senior engineers to plan scalability improvements."))),
+                    .init(kind: .breakNote("1 hour break")),
+                    .init(kind: .meeting(Meeting(timeRange: "4:00 – 5:00 PM",
+                                                 title: "Marketing Planning",
+                                                 detail: "Quarterly marketing planning session to align on campaigns, content strategy, and brand positioning.")))
                 ])
         }
 
