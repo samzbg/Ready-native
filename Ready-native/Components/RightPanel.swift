@@ -7,6 +7,7 @@ struct RightPanel: View {
     @State private var allDays: [DayModel] = SampleData.days
     @State private var currentDayIndex = 0
     @State private var activeMeetingId: UUID? = nil
+    @State private var isNavigatingForward = true
     
     private var currentDays: [DayModel] {
         Array(allDays.dropFirst(currentDayIndex).prefix(2))
@@ -32,39 +33,21 @@ struct RightPanel: View {
             .background(Color.white)
             .zIndex(2)
 
-            // Fixed day headers
+            // Animated content container
             VStack(spacing: 0) {
-                ZStack(alignment: .center) {
-                    // Vertical divider between day headers
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 1)
-                        .frame(height: 57)
-                    
+                // Day headers
                 HStack(alignment: .top, spacing: 0) {
                     ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
                         DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
-                }
                 .frame(height: 57)
                 
                 // Full width horizontal divider
                 Divider()
-            }
-            .background(Color.white)
-            .zIndex(2)
-            
-            // Scrollable content area with full-height vertical divider
-            ZStack(alignment: .center) {
-                // Vertical divider that spans full height
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1)
-                    .frame(maxHeight: .infinity)
                 
-                // Scrollable content
+                // Scrollable content area
                 ScrollView(.vertical, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 0) {
                         ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
@@ -77,6 +60,19 @@ struct RightPanel: View {
                     }
                 }
             }
+            .overlay(
+                // Full-height vertical divider
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity),
+                alignment: .center
+            )
+            .id(currentDayIndex) // Force re-creation to trigger animation
+            .transition(.asymmetric(
+                insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+                removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+            ))
             .background(Color.white)
         }
         .padding(.top, -18)
@@ -86,14 +82,20 @@ struct RightPanel: View {
     private func previousDays() {
         // Move to previous 2 days
         if currentDayIndex > 0 {
-            currentDayIndex = max(0, currentDayIndex - 2)
+            isNavigatingForward = false
+            withAnimation(.easeInOut(duration: 0.2)) {
+                currentDayIndex = max(0, currentDayIndex - 2)
+            }
         }
     }
     
     private func nextDays() {
         // Move to next 2 days
         if currentDayIndex + 2 < allDays.count {
-            currentDayIndex = min(allDays.count - 2, currentDayIndex + 2)
+            isNavigatingForward = true
+            withAnimation(.easeInOut(duration: 0.2)) {
+                currentDayIndex = min(allDays.count - 2, currentDayIndex + 2)
+            }
         }
     }
 }
