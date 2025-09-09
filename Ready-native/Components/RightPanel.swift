@@ -3,30 +3,60 @@ import AppKit
 
 // MARK: - RightPanel (macOS)
 
-struct RightPanel: View {
-    @State private var allDays: [DayModel] = SampleData.days
-    @State private var currentDayIndex = 0
-    @State private var activeMeetingId: UUID? = nil
-    @State private var isNavigatingForward = true
+class RightPanel: ObservableObject {
+    @Published fileprivate var allDays: [DayModel] = SampleData.days
+    @Published var currentDayIndex = 0
+    @Published var activeMeetingId: UUID? = nil
+    @Published var isNavigatingForward = true
     
-    private var currentDays: [DayModel] {
+    fileprivate var currentDays: [DayModel] {
         Array(allDays.dropFirst(currentDayIndex).prefix(2))
     }
     
-    private var currentMonthTitle: String {
+    var currentMonthTitle: String {
         guard !currentDays.isEmpty else { return "September 2025" }
         let firstDay = currentDays[0]
         // Extract month and year from the first day's date
         return "September 2025" // This would be calculated from actual date in a real app
     }
+    
+    func previousDays() {
+        // Move to previous 2 days
+        if currentDayIndex > 0 {
+            // Use a small delay to avoid publishing during view updates
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.isNavigatingForward = false
+                    self.currentDayIndex = max(0, self.currentDayIndex - 2)
+                }
+            }
+        }
+    }
+    
+    func nextDays() {
+        // Move to next 2 days
+        if currentDayIndex + 2 < allDays.count {
+            // Use a small delay to avoid publishing during view updates
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.isNavigatingForward = true
+                    self.currentDayIndex = min(self.allDays.count - 2, self.currentDayIndex + 2)
+                }
+            }
+        }
+    }
+}
 
+struct RightPanelView: View {
+    @ObservedObject var rightPanel: RightPanel
+    
     var body: some View {
         VStack(spacing: 0) {
             // Fixed month header
             HeaderView(
-                monthTitle: currentMonthTitle,
-                onPreviousDays: previousDays,
-                onNextDays: nextDays
+                monthTitle: rightPanel.currentMonthTitle,
+                onPreviousDays: rightPanel.previousDays,
+                onNextDays: rightPanel.nextDays
             )
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
@@ -37,7 +67,7 @@ struct RightPanel: View {
             VStack(spacing: 0) {
                 // Day headers
                 HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
+                    ForEach(Array(rightPanel.currentDays.enumerated()), id: \.element.id) { index, day in
                         DayHeaderView(weekday: day.weekday, dayNumber: day.dayNumber, isToday: day.isToday)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
@@ -50,53 +80,33 @@ struct RightPanel: View {
                 // Scrollable content area
                 ScrollView(.vertical, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 0) {
-                        ForEach(Array(currentDays.enumerated()), id: \.element.id) { index, day in
+                        ForEach(Array(rightPanel.currentDays.enumerated()), id: \.element.id) { index, day in
                             DayColumnContent(
                                 day: day,
                                 index: index,
-                                activeMeetingId: $activeMeetingId
+                                activeMeetingId: $rightPanel.activeMeetingId
                             )
                         }
                     }
                 }
             }
-            .overlay(
+        .overlay(
                 // Full-height vertical divider
-                Rectangle()
+            Rectangle()
                     .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1)
+                .frame(width: 1)
                     .frame(maxHeight: .infinity),
                 alignment: .center
             )
-            .id(currentDayIndex) // Force re-creation to trigger animation
+            .id("\(rightPanel.currentDayIndex)-\(rightPanel.isNavigatingForward)") // Force re-creation to trigger animation
             .transition(.asymmetric(
-                insertion: isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
-                removal: isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+                insertion: rightPanel.isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+                removal: rightPanel.isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
             ))
             .background(Color.white)
         }
         .padding(.top, -18)
         .background(Color.white)
-    }
-    
-    private func previousDays() {
-        // Move to previous 2 days
-        if currentDayIndex > 0 {
-            isNavigatingForward = false
-            withAnimation(.easeInOut(duration: 0.2)) {
-                currentDayIndex = max(0, currentDayIndex - 2)
-            }
-        }
-    }
-    
-    private func nextDays() {
-        // Move to next 2 days
-        if currentDayIndex + 2 < allDays.count {
-            isNavigatingForward = true
-            withAnimation(.easeInOut(duration: 0.2)) {
-                currentDayIndex = min(allDays.count - 2, currentDayIndex + 2)
-            }
-        }
     }
 }
 
@@ -140,7 +150,7 @@ private struct HeaderView: View {
     var monthTitle: String
     var onPreviousDays: () -> Void
     var onNextDays: () -> Void
-
+    
     var body: some View {
         HStack(alignment: .center) {
             Text(monthTitle)
@@ -209,7 +219,7 @@ private struct DayHeaderView: View {
     let weekday: String
     let dayNumber: Int
     let isToday: Bool
-
+    
     var body: some View {
         HStack(alignment: .center, spacing: isToday ? 4 : 1) {
             Text(weekday)
@@ -281,7 +291,7 @@ private struct MeetingCard: View {
     private var borderColor: Color {
         isActive ? Color(red: 90/255, green: 89/255, blue: 87/255) : Color(red: 230/255, green: 230/255, blue: 230/255)
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             if let time = meeting.timeRange {
@@ -505,11 +515,11 @@ private enum SampleData {
 struct RightPanel_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            RightPanel()
+            RightPanelView(rightPanel: RightPanel())
                 .previewLayout(.fixed(width: 560, height: 820))
                 .previewDisplayName("~560pt (2 days)")
 
-            RightPanel()
+            RightPanelView(rightPanel: RightPanel())
                 .previewLayout(.fixed(width: 980, height: 820))
                 .previewDisplayName("~980pt (3 days)")
         }
