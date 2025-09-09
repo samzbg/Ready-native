@@ -10,14 +10,6 @@ import SwiftUI
 struct MiddlePanel: View {
     var body: some View {
         VStack {
-            Text("Active Content")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            Text("This panel will show the main content that changes based on navigation selection.")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
             Spacer()
         }
         .padding(.vertical)

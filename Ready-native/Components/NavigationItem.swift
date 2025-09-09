@@ -11,25 +11,40 @@ struct NavigationItem: View {
     let icon: String
     let title: String
     @State private var isSelected = false
+    @State private var isHovered = false
     
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .foregroundColor(isSelected ? .accentColor : .secondary)
+                .foregroundColor(Color(red: 90/255, green: 89/255, blue: 87/255))
                 .frame(width: 16)
+                .padding(.leading, 8)
             
             Text(title)
-                .foregroundColor(isSelected ? .accentColor : .primary)
+                .foregroundColor(Color(red: 90/255, green: 89/255, blue: 87/255))
                 .font(.system(size: 14))
             
             Spacer()
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+        .frame(height: 28)
+        .padding(.horizontal, 4)
+        .background(
+            Group {
+                if isSelected {
+                    Color(red: 236/255, green: 236/255, blue: 234/255)
+                } else if isHovered {
+                    Color(red: 243/255, green: 243/255, blue: 242/255)
+                } else {
+                    Color.clear
+                }
+            }
+        )
         .cornerRadius(6)
         .onTapGesture {
             isSelected.toggle()
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }

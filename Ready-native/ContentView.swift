@@ -9,32 +9,22 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        HStack(spacing: 0) {
-            // Left Panel - Navigation (215px)
-            LeftPanel()
-                .frame(width: 215)
-            
-            // Left divider
-            Rectangle()
-                .fill(Color(red: 236/255, green: 236/255, blue: 233/255))
-                .frame(width: 1)
-                .frame(maxHeight: .infinity)
-            
-            // Middle Panel - Active Content (475px)
-            MiddlePanel()
-                .frame(width: 475)
-            
-            // Right divider
-            Rectangle()
-                .fill(Color(red: 236/255, green: 236/255, blue: 233/255))
-                .frame(width: 1)
-                .frame(maxHeight: .infinity)
-            
-            // Right Panel - Calendar (min 335px, expandable)
-            RightPanel()
-                .frame(minWidth: 335)
+        GeometryReader { geo in
+            HSplitView {
+                // Left Panel - Navigation
+                LeftPanel()
+                    .frame(minWidth: 215, idealWidth: 215, maxWidth: 230)
+                
+                // Middle Panel - Active Content
+                MiddlePanel()
+                    .frame(minWidth: 475)
+                
+                // Right Panel - Calendar
+                RightPanel()
+                    .frame(minWidth: 575)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 1285, maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
         .ignoresSafeArea(.all)
     }
