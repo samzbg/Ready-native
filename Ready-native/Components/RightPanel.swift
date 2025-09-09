@@ -8,6 +8,7 @@ class RightPanel: ObservableObject {
     @Published var currentDayIndex = 0
     @Published var activeMeetingId: UUID? = nil
     @Published var isNavigatingForward = true
+    private var pendingDirection: Bool? = nil
     
     fileprivate var currentDays: [DayModel] {
         Array(allDays.dropFirst(currentDayIndex).prefix(2))
@@ -23,12 +24,14 @@ class RightPanel: ObservableObject {
     func previousDays() {
         // Move to previous 2 days
         if currentDayIndex > 0 {
+            pendingDirection = false
             // Use a small delay to avoid publishing during view updates
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     self.isNavigatingForward = false
                     self.currentDayIndex = max(0, self.currentDayIndex - 2)
                 }
+                self.pendingDirection = nil
             }
         }
     }
@@ -36,14 +39,20 @@ class RightPanel: ObservableObject {
     func nextDays() {
         // Move to next 2 days
         if currentDayIndex + 2 < allDays.count {
+            pendingDirection = true
             // Use a small delay to avoid publishing during view updates
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     self.isNavigatingForward = true
                     self.currentDayIndex = min(self.allDays.count - 2, self.currentDayIndex + 2)
                 }
+                self.pendingDirection = nil
             }
         }
+    }
+    
+    var effectiveDirection: Bool {
+        return pendingDirection ?? isNavigatingForward
     }
 }
 
@@ -98,10 +107,10 @@ struct RightPanelView: View {
                     .frame(maxHeight: .infinity),
                 alignment: .center
             )
-            .id("\(rightPanel.currentDayIndex)-\(rightPanel.isNavigatingForward)") // Force re-creation to trigger animation
+            .id("\(rightPanel.currentDayIndex)-\(rightPanel.effectiveDirection)") // Force re-creation to trigger animation
             .transition(.asymmetric(
-                insertion: rightPanel.isNavigatingForward ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
-                removal: rightPanel.isNavigatingForward ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
+                insertion: rightPanel.effectiveDirection ? .move(edge: .trailing).combined(with: .opacity) : .move(edge: .leading).combined(with: .opacity),
+                removal: rightPanel.effectiveDirection ? .move(edge: .leading).combined(with: .opacity) : .move(edge: .trailing).combined(with: .opacity)
             ))
             .background(Color.white)
         }
