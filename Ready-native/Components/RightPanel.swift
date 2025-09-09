@@ -117,13 +117,8 @@ class RightPanel: ObservableObject {
     }
     
     func toggleEventActive(_ eventId: String) {
-        do {
-            try databaseService.toggleEventActive(eventId)
-            // Clear cache to force refresh
-            lastCachedDate = nil
-        } catch {
-            print("Error toggling event active state: \(error)")
-        }
+        // Just toggle the UI state - no database operation needed for this demo
+        // The activeMeetingId binding already handles the visual state
     }
     
     
@@ -561,11 +556,42 @@ private struct DayModel: Identifiable {
             return nil
         }
         
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
+        let calendar = Calendar.current
+        let startComponents = calendar.dateComponents([.hour, .minute], from: startDate)
+        let endComponents = calendar.dateComponents([.hour, .minute], from: endDate)
         
-        let startFormatted = formatter.string(from: startDate)
-        let endFormatted = formatter.string(from: endDate)
+        guard let startHour = startComponents.hour,
+              let startMinute = startComponents.minute,
+              let endHour = endComponents.hour,
+              let endMinute = endComponents.minute else {
+            return nil
+        }
+        
+        // Determine AM/PM for start and end times
+        let startIsAM = startHour < 12
+        let endIsAM = endHour < 12
+        
+        // Format start time
+        let startDisplayHour = startHour == 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour)
+        let startMinuteStr = startMinute == 0 ? "" : ":\(String(format: "%02d", startMinute))"
+        let startPeriod = startIsAM ? "AM" : "PM"
+        
+        // Format end time
+        let endDisplayHour = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour)
+        let endMinuteStr = endMinute == 0 ? "" : ":\(String(format: "%02d", endMinute))"
+        let endPeriod = endIsAM ? "AM" : "PM"
+        
+        // Build the formatted string
+        var startFormatted = "\(startDisplayHour)\(startMinuteStr)"
+        var endFormatted = "\(endDisplayHour)\(endMinuteStr)"
+        
+        // Only show AM/PM for start time if it's different from end time
+        if startIsAM != endIsAM {
+            startFormatted += " \(startPeriod)"
+        }
+        
+        // Always show AM/PM for end time
+        endFormatted += " \(endPeriod)"
         
         return "\(startFormatted) – \(endFormatted)"
     }
