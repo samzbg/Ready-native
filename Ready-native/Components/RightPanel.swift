@@ -154,7 +154,7 @@ struct RightPanelView: View {
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
-                .frame(height: 57)
+                .frame(height: 63)
                 
                 // Full width horizontal divider
                 Divider()
@@ -255,6 +255,7 @@ private struct HeaderView: View {
                 IconButton(systemName: "chevron.right", action: onNextDays)
             }
         }
+        .padding(.bottom, 8)
     }
 }
 
@@ -346,7 +347,8 @@ private struct DayHeaderView: View {
                     .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
             }
         }
-        .frame(height: 58)
+        .offset(y: -2)
+        .frame(height: 64)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
