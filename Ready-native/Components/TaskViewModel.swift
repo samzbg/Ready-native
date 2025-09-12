@@ -78,7 +78,8 @@ class TaskListViewModel {
     }
     
     func archiveActiveTask() {
-        guard let task = activeTask else { return }
+        guard let task = activeTask,
+              let currentIndex = activeTaskIndex else { return }
         
         do {
             var updatedTask = task
@@ -92,8 +93,20 @@ class TaskListViewModel {
                 tasks[index] = updatedTask
             }
             
-            // Clear selection
-            activeTaskIndex = nil
+            // Select next task or previous task if at end
+            let filteredCount = filteredTasks.count
+            if filteredCount > 1 {
+                if currentIndex < filteredCount - 1 {
+                    // Select next task
+                    activeTaskIndex = currentIndex
+                } else {
+                    // Select previous task (last task in list)
+                    activeTaskIndex = currentIndex - 1
+                }
+            } else {
+                // No tasks left, clear selection
+                activeTaskIndex = nil
+            }
             
             // Post notification
             NotificationCenter.default.post(name: NSNotification.Name("TaskArchived"), object: nil)
