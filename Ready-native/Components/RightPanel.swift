@@ -209,8 +209,8 @@ private struct DayColumnContent: View {
                     MeetingCard(meeting: meeting, isActive: activeMeetingId == meeting.id, onToggle: {
                         withAnimation(.easeOut(duration: 0.2)) {
                             activeMeetingId = activeMeetingId == meeting.id ? nil : meeting.id
-                            rightPanel.toggleEventActive(meeting.id)
                         }
+                        rightPanel.toggleEventActive(meeting.id)
                     })
                 case .banner(let text):
                     InlineBanner(text: text)
@@ -383,6 +383,7 @@ private struct MeetingCard: View {
     let isActive: Bool
     let onToggle: () -> Void
     @State private var isHovered = false
+    @State private var showDetail = false
 
     private var backgroundColor: Color {
         if isActive {
@@ -413,14 +414,14 @@ private struct MeetingCard: View {
                     .lineLimit(1)
             }
 
-            if let detail = meeting.detail, isActive {
+            if let detail = meeting.detail, isActive && showDetail {
                 Text(detail)
                     .font(.system(size: 12))
                     .foregroundColor(textColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(2)
                     .padding(.top, 3)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -428,6 +429,7 @@ private struct MeetingCard: View {
         .padding(.horizontal, 11)
         .padding(.bottom, 8)
         .frame(height: isActive ? nil : 45, alignment: .top)
+        .clipped()
         .background(
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .fill(backgroundColor)
@@ -445,6 +447,19 @@ private struct MeetingCard: View {
         )
         .onTapGesture(perform: onToggle)
         .onHover { isHovered = $0 }
+        .onChange(of: isActive) { oldValue, newValue in
+            if newValue {
+                // Show detail text after height animation completes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showDetail = true
+                    }
+                }
+            } else {
+                // Hide detail text immediately when collapsing
+                showDetail = false
+            }
+        }
     }
     
     private var textColor: Color {
