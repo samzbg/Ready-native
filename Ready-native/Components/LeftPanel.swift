@@ -196,7 +196,9 @@ struct LeftPanel: View {
                     Spacer()
                     Button(action: {
                         print("Add task button tapped!")
-                        taskViewModel.createNewTask()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            taskViewModel.createNewTask()
+                        }
                     }) {
                         CustomAddIcon()
                     }

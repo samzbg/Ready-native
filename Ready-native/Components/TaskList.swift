@@ -9,9 +9,8 @@ import SwiftUI
 import Combine
 
 struct TaskList: View {
-    @State private var tasks: [Task] = []
-    @State private var isLoading = false
-    @State private var error: Error?
+    @Bindable var viewModel: TaskListViewModel
+    @FocusState private var isFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -23,7 +22,7 @@ struct TaskList: View {
                 
                 Spacer()
                 
-                Text("\(tasks.count)")
+                Text("\(viewModel.filteredTasks.count)")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -36,15 +35,26 @@ struct TaskList: View {
             .padding(.bottom, 16)
             
             // Task List
-            if tasks.isEmpty {
+            if viewModel.filteredTasks.isEmpty {
                 EmptyStateView()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(tasks, id: \.id) { task in
-                            TaskRowView(task: task) {
-                                toggleTaskStatus(task)
-                            }
+                        ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.element.id) { index, task in
+                            TaskRowView(
+                                task: task,
+                                isActive: viewModel.activeTaskIndex == index,
+                                onToggle: { 
+                                    viewModel.toggleTaskStatus(task)
+                                },
+                                onSelect: { 
+                                    viewModel.selectTask(at: index)
+                                    // Ensure focus when task is selected
+                                    DispatchQueue.main.async {
+                                        isFocused = true
+                                    }
+                                }
+                            )
                         }
                     }
                     .padding(.horizontal, 24)
@@ -53,51 +63,29 @@ struct TaskList: View {
             
             Spacer()
         }
+        .focused($isFocused)
+        .onTapGesture {
+            isFocused = true
+        }
         .onAppear {
-            loadTasks()
+            isFocused = true
         }
-        .refreshable {
-            loadTasks()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TaskCreated"))) { _ in
-            loadTasks()
-        }
-    }
-    
-    private func loadTasks() {
-        isLoading = true
-        do {
-            let databaseService = DatabaseService.shared
-            tasks = try databaseService.getTasks()
-            isLoading = false
-        } catch {
-            self.error = error
-            isLoading = false
-        }
-    }
-    
-    private func toggleTaskStatus(_ task: Task) {
-        do {
-            var updatedTask = task
-            updatedTask.status = task.status == .completed ? .pending : .completed
-            updatedTask.updatedAt = Date()
-            
-            let databaseService = DatabaseService.shared
-            try databaseService.updateTask(updatedTask)
-            
-            // Update local state
-            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-                tasks[index] = updatedTask
+        .background(Color.clear)
+        .contentShape(Rectangle())
+        .onKeyPress(.delete) {
+            if viewModel.activeTask != nil {
+                viewModel.archiveActiveTask()
             }
-        } catch {
-            self.error = error
+            return .handled
         }
     }
 }
 
 struct TaskRowView: View {
     let task: Task
+    let isActive: Bool
     let onToggle: () -> Void
+    let onSelect: () -> Void
     @State private var isHovered = false
     
     var body: some View {
@@ -128,11 +116,19 @@ struct TaskRowView: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .background(
-            isHovered ? Color.gray.opacity(0.05) : Color.clear
+            isActive ? Color.blue.opacity(0.1) : 
+            (isHovered ? Color.gray.opacity(0.05) : Color.clear)
         )
         .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isActive ? Color.blue : Color.clear, lineWidth: 1)
+        )
         .onHover { hovering in
             isHovered = hovering
+        }
+        .onTapGesture {
+            onSelect()
         }
     }
 }
@@ -159,6 +155,6 @@ struct EmptyStateView: View {
 }
 
 #Preview {
-    TaskList()
+    TaskList(viewModel: TaskListViewModel())
         .frame(width: 475, height: 400)
 }

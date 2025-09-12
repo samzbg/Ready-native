@@ -8,13 +8,20 @@
 import SwiftUI
 
 struct MiddlePanel: View {
+    @State private var taskListViewModel = TaskListViewModel()
+    
     var body: some View {
         VStack {
-            TaskList()
+            TaskList(viewModel: taskListViewModel)
         }
         .padding(.vertical)
         .padding(.trailing)
         .background(Color.white)
+    }
+    
+    // Expose the ViewModel for external access
+    func getTaskListViewModel() -> TaskListViewModel {
+        return taskListViewModel
     }
 }
 

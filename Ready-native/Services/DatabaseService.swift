@@ -251,13 +251,13 @@ class DatabaseService: ObservableObject {
     
     func updateTask(_ task: Task) throws {
         try dbQueue?.write { db in
-            var mutableTask = task
+            let mutableTask = task
             try mutableTask.update(db)
         }
     }
     
     func deleteTask(_ task: Task) throws {
-        try dbQueue?.write { db in
+        _ = try dbQueue?.write { db in
             try task.delete(db)
         }
     }

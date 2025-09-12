@@ -26,6 +26,7 @@ struct Task: Codable, FetchableRecord, MutablePersistableRecord {
         case inProgress = "in_progress"
         case completed = "completed"
         case cancelled = "cancelled"
+        case archived = "archived"
     }
     
     static let databaseTableName = "tasks"

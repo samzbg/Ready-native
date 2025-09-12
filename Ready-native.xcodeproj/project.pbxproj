@@ -20,6 +20,7 @@
 		6BF767FE2E6C7AE500B53283 /* NavigationItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF767FA2E6C7AE500B53283 /* NavigationItem.swift */; };
 		8FB2FF2BA24341FFABAFD034 /* TaskList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB2FF2BA24341FFABAFD035 /* TaskList.swift */; };
 		70720F6866654CAEAB6C6D1B /* AddTaskSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70720F6866654CAEAB6C6D1C /* AddTaskSheet.swift */; };
+		30DB2B7004574D2380892CCD /* TaskViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30DB2B7004574D2380892CCE /* TaskViewModel.swift */; };
 		6BF998122E70BD14007554DC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 6BF998112E70BD14007554DC /* GRDB */; };
 		6BF998142E70BD8B007554DC /* AppInitializationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF998132E70BD8B007554DC /* AppInitializationService.swift */; };
 		6BF998172E70BDC6007554DC /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF998152E70BDC6007554DC /* DatabaseService.swift */; };
@@ -65,6 +66,7 @@
 		6BF767FA2E6C7AE500B53283 /* NavigationItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationItem.swift; sourceTree = "<group>"; };
 		8FB2FF2BA24341FFABAFD035 /* TaskList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskList.swift; sourceTree = "<group>"; };
 		70720F6866654CAEAB6C6D1C /* AddTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskSheet.swift; sourceTree = "<group>"; };
+		30DB2B7004574D2380892CCE /* TaskViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskViewModel.swift; sourceTree = "<group>"; };
 		6BF998132E70BD8B007554DC /* AppInitializationService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppInitializationService.swift; path = "Ready-native/Services/AppInitializationService.swift"; sourceTree = "<group>"; };
 		6BF998152E70BDC6007554DC /* DatabaseService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DatabaseService.swift; path = "Ready-native/Services/DatabaseService.swift"; sourceTree = "<group>"; };
 		6BF998162E70BDC6007554DC /* DataMigrationService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DataMigrationService.swift; path = "Ready-native/Services/DataMigrationService.swift"; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 				6BF767FA2E6C7AE500B53283 /* NavigationItem.swift */,
 				8FB2FF2BA24341FFABAFD035 /* TaskList.swift */,
 				70720F6866654CAEAB6C6D1C /* AddTaskSheet.swift */,
+				30DB2B7004574D2380892CCE /* TaskViewModel.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -329,6 +332,7 @@
 				6BF767FE2E6C7AE500B53283 /* NavigationItem.swift in Sources */,
 				8FB2FF2BA24341FFABAFD034 /* TaskList.swift in Sources */,
 				70720F6866654CAEAB6C6D1B /* AddTaskSheet.swift in Sources */,
+				30DB2B7004574D2380892CCD /* TaskViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var rightPanel = RightPanel()
+    @State private var middlePanel = MiddlePanel()
     
     var body: some View {
         GeometryReader { geo in
@@ -18,7 +19,7 @@ struct ContentView: View {
                     .frame(minWidth: 215, idealWidth: 215, maxWidth: 230)
                 
                 // Middle Panel - Active Content
-                MiddlePanel()
+                middlePanel
                     .frame(minWidth: 475)
                 
                 // Right Panel - Calendar
@@ -42,6 +43,28 @@ struct ContentView: View {
             // For now, always handle calendar navigation
             rightPanel.nextDays()
             return .handled
+        }
+        .onKeyPress(.upArrow) {
+            // Handle task list navigation
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            taskListViewModel.handleUpArrow()
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            // Handle task list navigation
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            taskListViewModel.handleDownArrow()
+            return .handled
+        }
+        .onKeyPress { keyPress in
+            // Handle delete key (MacBook Pro delete key that erases text)
+            if keyPress.key == .delete || keyPress.key.character == "\u{7F}" {
+                let taskListViewModel = middlePanel.getTaskListViewModel()
+                taskListViewModel.handleDeleteKey()
+                return .handled
+            }
+            
+            return .ignored
         }
         .onKeyPress { keyPress in
             if keyPress.key == .init("t") {
