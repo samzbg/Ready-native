@@ -7,13 +7,37 @@
 
 import SwiftUI
 
+@Observable
+class TaskViewModel {
+    func createNewTask() {
+        let newTask = Task(
+            id: UUID().uuidString,
+            title: "New task",
+            description: nil,
+            dueDate: nil,
+            important: false
+        )
+        
+        do {
+            let databaseService = DatabaseService.shared
+            try databaseService.saveTask(newTask)
+            print("New task created: \(newTask.title)")
+            
+            // Post notification to refresh task list
+            NotificationCenter.default.post(name: NSNotification.Name("TaskCreated"), object: nil)
+        } catch {
+            print("Error creating task: \(error)")
+        }
+    }
+}
+
 struct CustomAddIcon: View {
     var body: some View {
         Image(systemName: "square.and.pencil")
             .font(.system(size: 16))
             .foregroundColor(Color(red: 90/255, green: 89/255, blue: 87/255))
-            .padding(.vertical, -17)
-            .padding(.horizontal, 2)
+            .frame(width: 20, height: 20)
+            .contentShape(Rectangle())
     }
 }
 
@@ -75,20 +99,11 @@ struct WindowDragGesture: Gesture {
 }
 
 struct LeftPanel: View {
+    @State private var taskViewModel = TaskViewModel()
+    
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Spacer()
-                    
-                    Button(action: {
-                        // Add new task action
-                    }) {
-                        CustomAddIcon()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.top, -2)
-                }
                 
                 VStack(alignment: .center, spacing: 1) {
                     
@@ -163,7 +178,37 @@ struct LeftPanel: View {
             .padding(.horizontal, 8)
         }
         .background(Color(red: 249/255, green: 249/255, blue: 248/255))
-        .gesture(WindowDragGesture())
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { value in
+                    if let window = NSApplication.shared.keyWindow {
+                        let newOrigin = NSPoint(
+                            x: window.frame.origin.x + value.translation.width,
+                            y: window.frame.origin.y - value.translation.height
+                        )
+                        window.setFrameOrigin(newOrigin)
+                    }
+                }
+        )
+        .overlay(
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        print("Add task button tapped!")
+                        taskViewModel.createNewTask()
+                    }) {
+                        CustomAddIcon()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(8)
+                    .contentShape(Rectangle())
+                }
+                .padding(.top, -25)
+                Spacer()
+            },
+            alignment: .topTrailing
+        )
     }
 }
 

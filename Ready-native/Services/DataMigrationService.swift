@@ -11,6 +11,52 @@ import GRDB
 class DataMigrationService {
     private let databaseService = DatabaseService.shared
     
+    func migrateTasksTable() throws {
+        try databaseService.dbQueue?.write { db in
+            // Check if description column exists
+            let columns = try db.columns(in: "tasks")
+            let hasDescription = columns.contains { $0.name == "description" }
+            
+            if !hasDescription {
+                print("🔄 Adding description column to tasks table...")
+                try db.alter(table: "tasks") { t in
+                    t.add(column: "description", .text)
+                }
+                print("✅ Description column added to tasks table")
+            }
+            
+            // Check if important column exists
+            let hasImportant = columns.contains { $0.name == "important" }
+            if !hasImportant {
+                print("🔄 Adding important column to tasks table...")
+                try db.alter(table: "tasks") { t in
+                    t.add(column: "important", .boolean).defaults(to: false)
+                }
+                print("✅ Important column added to tasks table")
+            }
+            
+            // Check if calEventId column exists
+            let hasCalEventId = columns.contains { $0.name == "calEventId" }
+            if !hasCalEventId {
+                print("🔄 Adding calEventId column to tasks table...")
+                try db.alter(table: "tasks") { t in
+                    t.add(column: "calEventId", .text)
+                }
+                print("✅ calEventId column added to tasks table")
+            }
+            
+            // Check if listId column exists
+            let hasListId = columns.contains { $0.name == "listId" }
+            if !hasListId {
+                print("🔄 Adding listId column to tasks table...")
+                try db.alter(table: "tasks") { t in
+                    t.add(column: "listId", .text)
+                }
+                print("✅ listId column added to tasks table")
+            }
+        }
+    }
+    
     func migrateSampleData() throws {
         try databaseService.dbQueue?.write { db in
             // Clear existing sample data

@@ -17,8 +17,9 @@ class AppInitializationService {
             // Initialize database service (creates tables)
             _ = DatabaseService.shared
             
-            // Migrate sample data
+            // Migrate database schema
             let migrationService = DataMigrationService()
+            try migrationService.migrateTasksTable()
             try migrationService.migrateSampleData()
             
             print("App initialization completed successfully")

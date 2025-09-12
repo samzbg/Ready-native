@@ -239,6 +239,34 @@ class DatabaseService: ObservableObject {
             return (data: data, filename: attachment.originalFilename, mimeType: attachment.mimeType)
         }
     }
+    
+    // MARK: - Tasks
+    
+    func saveTask(_ task: Task) throws {
+        try dbQueue?.write { db in
+            var mutableTask = task
+            try mutableTask.save(db)
+        }
+    }
+    
+    func updateTask(_ task: Task) throws {
+        try dbQueue?.write { db in
+            var mutableTask = task
+            try mutableTask.update(db)
+        }
+    }
+    
+    func deleteTask(_ task: Task) throws {
+        try dbQueue?.write { db in
+            try task.delete(db)
+        }
+    }
+    
+    func getTasks() throws -> [Task] {
+        return try dbQueue?.read { db in
+            try Task.fetchAll(db)
+        } ?? []
+    }
 }
 
 // MARK: - SHA256 Helper

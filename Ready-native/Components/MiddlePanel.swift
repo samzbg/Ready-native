@@ -10,7 +10,7 @@ import SwiftUI
 struct MiddlePanel: View {
     var body: some View {
         VStack {
-            Spacer()
+            TaskList()
         }
         .padding(.vertical)
         .padding(.trailing)
