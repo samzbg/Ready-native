@@ -22,6 +22,7 @@ class TaskListViewModel {
     // Editing state
     var isEditingTitle = false
     var editingTitleText = ""
+    private var isProcessingEditAction = false
     
     init() {
         loadTasks()
@@ -182,6 +183,9 @@ class TaskListViewModel {
     }
     
     func handleEnterKey() {
+        // Prevent rapid key presses from causing race conditions
+        guard !isProcessingEditAction else { return }
+        
         if isEditingTitle {
             saveTitleEdit()
         } else if activeTask != nil {
@@ -190,21 +194,37 @@ class TaskListViewModel {
     }
     
     func handleEscapeKey() {
+        // Prevent rapid key presses from causing race conditions
+        guard !isProcessingEditAction else { return }
+        
         if isEditingTitle {
             cancelTitleEdit()
+        } else {
+            // Clear active task selection when not in edit mode
+            clearActiveTask()
         }
     }
     
     func startTitleEdit() {
-        guard let task = activeTask else { return }
+        guard let task = activeTask, !isProcessingEditAction else { return }
+        
+        isProcessingEditAction = true
         isEditingTitle = true
         // If the task title is "New task", start with empty text for better UX
         editingTitleText = task.title == "New task" ? "" : task.title
+        
+        // Reset processing flag after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isProcessingEditAction = false
+        }
     }
     
     func saveTitleEdit() {
-        guard let task = activeTask,
-              !editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard let task = activeTask, !isProcessingEditAction else { return }
+        
+        isProcessingEditAction = true
+        
+        guard !editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             cancelTitleEdit()
             return
         }
@@ -228,11 +248,28 @@ class TaskListViewModel {
             self.error = error
             print("Error updating task title: \(error)")
         }
+        
+        // Reset processing flag after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isProcessingEditAction = false
+        }
     }
     
     func cancelTitleEdit() {
+        guard !isProcessingEditAction else { return }
+        
+        isProcessingEditAction = true
         isEditingTitle = false
         editingTitleText = ""
+        
+        // Reset processing flag after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isProcessingEditAction = false
+        }
+    }
+    
+    func clearActiveTask() {
+        activeTaskIndex = nil
     }
     
     // MARK: - Private Methods

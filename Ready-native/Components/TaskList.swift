@@ -123,24 +123,37 @@ struct TaskRowView: View {
                 // Task Title
                 ZStack(alignment: .leading) {
                     if viewModel.isEditingTitle && isActive {
-                        // Text field for editing
-                        TextField("Task title", text: $viewModel.editingTitleText)
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .focused($isTextFieldFocused)
-                            .onSubmit {
-                                viewModel.saveTitleEdit()
+                    // Text field for editing
+                    TextField("Task title", text: $viewModel.editingTitleText)
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            viewModel.saveTitleEdit()
+                            isTextFieldFocused = false
+                        }
+                        .onAppear {
+                            isTextFieldFocused = true
+                        }
+                        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+                            if !isEditing {
                                 isTextFieldFocused = false
                             }
-                            .onAppear {
-                                isTextFieldFocused = true
-                            }
-                            .onChange(of: viewModel.isEditingTitle) { _, isEditing in
-                                if !isEditing {
-                                    isTextFieldFocused = false
+                        }
+                        .onChange(of: isTextFieldFocused) { _, focused in
+                            if focused {
+                                // Position cursor at end of text using a safe approach
+                                let currentText = viewModel.editingTitleText
+                                if !currentText.isEmpty {
+                                    // Temporarily modify text to position cursor at end
+                                    viewModel.editingTitleText = currentText + " "
+                                    DispatchQueue.main.async {
+                                        viewModel.editingTitleText = currentText
+                                    }
                                 }
                             }
+                        }
                     } else {
                         // Regular text display
                         Text(task.title == "New task" ? "New task" : task.title)
