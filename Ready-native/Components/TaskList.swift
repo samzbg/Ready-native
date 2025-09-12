@@ -25,7 +25,8 @@ struct TaskList: View {
                                 // Top spacing for edit mode
                                 if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
                                     Spacer()
-                                        .frame(height: 30)
+                                        .frame(height: 15)
+                                        .animation(.easeInOut(duration: 0.3), value: viewModel.isEditingTitle)
                                 }
                                 
                                 TaskRowView(
@@ -51,7 +52,8 @@ struct TaskList: View {
                                 // Bottom spacing for edit mode
                                 if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
                                     Spacer()
-                                        .frame(height: 50)
+                                        .frame(height: 30)
+                                        .animation(.easeInOut(duration: 0.3), value: viewModel.isEditingTitle)
                                 }
                             }
                         }
