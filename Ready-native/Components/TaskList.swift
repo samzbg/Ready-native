@@ -14,18 +14,6 @@ struct TaskList: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                Text("Tasks")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 24)
-            .padding(.bottom, 16)
-            
             // Task List
             if viewModel.filteredTasks.isEmpty {
                 EmptyStateView()
@@ -37,7 +25,9 @@ struct TaskList: View {
                                 task: task,
                                 isActive: viewModel.activeTaskIndex == index,
                                 onToggle: { 
-                                    viewModel.toggleTaskStatus(task)
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        viewModel.toggleTaskStatus(task)
+                                    }
                                 },
                                 onSelect: { 
                                     viewModel.selectTask(at: index)
@@ -73,12 +63,20 @@ struct TaskList: View {
     }
 }
 
+struct TextWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct TaskRowView: View {
     let task: Task
     let isActive: Bool
     let onToggle: () -> Void
     let onSelect: () -> Void
     @State private var isHovered = false
+    @State private var textWidth: CGFloat = 0
     
     var body: some View {
         HStack(spacing: 12) {
@@ -91,10 +89,33 @@ struct TaskRowView: View {
             .buttonStyle(PlainButtonStyle())
             
             // Task Title
-            Text(task.title)
-                .font(.system(size: 13))
-                .foregroundColor(task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255))
-                .strikethrough(task.status == .completed)
+            ZStack(alignment: .leading) {
+                Text(task.title)
+                    .font(.system(size: 13))
+                    .foregroundColor(task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255))
+                    .background(
+                        GeometryReader { geometry in
+                            Color.clear
+                                .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
+                        }
+                    )
+                
+                // Animated strikethrough line
+                if task.status == .completed {
+                    Rectangle()
+                        .fill(Color.secondary)
+                        .frame(width: textWidth, height: 1)
+                        .offset(y: 0)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
+                            removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
+                        ))
+                        .animation(.easeInOut(duration: 0.3), value: task.status)
+                }
+            }
+            .onPreferenceChange(TextWidthPreferenceKey.self) { width in
+                textWidth = width
+            }
             
             Spacer()
             
@@ -105,8 +126,9 @@ struct TaskRowView: View {
                     .foregroundColor(.orange)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .padding(.horizontal, 12)
+        .frame(height: 28)
         .background(
             isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear
         )
