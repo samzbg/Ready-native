@@ -110,82 +110,94 @@ struct TaskRowView: View {
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Checkbox
-            Button(action: onToggle) {
-                Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16))
-                    .foregroundColor(task.status == .completed ? .green : .gray)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Task Title
-            ZStack(alignment: .leading) {
-                if viewModel.isEditingTitle && isActive {
-                    // Text field for editing
-                    TextField("Task title", text: $viewModel.editingTitleText)
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .focused($isTextFieldFocused)
-                        .onSubmit {
-                            viewModel.saveTitleEdit()
-                            isTextFieldFocused = false
-                        }
-                        .onAppear {
-                            isTextFieldFocused = true
-                        }
-                        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
-                            if !isEditing {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                // Checkbox
+                Button(action: onToggle) {
+                    Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 16))
+                        .foregroundColor(task.status == .completed ? .green : .gray)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // Task Title
+                ZStack(alignment: .leading) {
+                    if viewModel.isEditingTitle && isActive {
+                        // Text field for editing
+                        TextField("Task title", text: $viewModel.editingTitleText)
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .focused($isTextFieldFocused)
+                            .onSubmit {
+                                viewModel.saveTitleEdit()
                                 isTextFieldFocused = false
                             }
-                        }
-                } else {
-                    // Regular text display
-                    Text(task.title == "New task" ? "New task" : task.title)
-                        .font(.system(size: 13))
-                        .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
-                        .background(
-                            GeometryReader { geometry in
-                                Color.clear
-                                    .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
+                            .onAppear {
+                                isTextFieldFocused = true
                             }
-                        )
-                    
-                    // Animated strikethrough line
-                    if task.status == .completed {
-                        Rectangle()
-                            .fill(Color.secondary)
-                            .frame(width: textWidth, height: 1)
-                            .offset(y: 0)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
-                                removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
-                            ))
-                            .animation(.easeInOut(duration: 0.3), value: task.status)
+                            .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+                                if !isEditing {
+                                    isTextFieldFocused = false
+                                }
+                            }
+                    } else {
+                        // Regular text display
+                        Text(task.title == "New task" ? "New task" : task.title)
+                            .font(.system(size: 13))
+                            .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
+                            .background(
+                                GeometryReader { geometry in
+                                    Color.clear
+                                        .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
+                                }
+                            )
+                        
+                        // Animated strikethrough line
+                        if task.status == .completed {
+                            Rectangle()
+                                .fill(Color.secondary)
+                                .frame(width: textWidth, height: 1)
+                                .offset(y: 0)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
+                                    removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
+                                ))
+                                .animation(.easeInOut(duration: 0.3), value: task.status)
+                        }
                     }
                 }
-            }
-            .onPreferenceChange(TextWidthPreferenceKey.self) { width in
-                textWidth = width
+                .onPreferenceChange(TextWidthPreferenceKey.self) { width in
+                    textWidth = width
+                }
+                
+                Spacer()
+                
+                // Important indicator
+                if task.important {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+                }
             }
             
-            Spacer()
-            
-            // Important indicator
-            if task.important {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.orange)
+            if viewModel.isEditingTitle && isActive {
+                Spacer()
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, viewModel.isEditingTitle && isActive ? 12 : 6)
         .padding(.horizontal, 12)
-        .frame(height: 28)
+        .frame(height: viewModel.isEditingTitle && isActive ? 136 : 28)
         .background(
-            isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear
+            viewModel.isEditingTitle && isActive ? Color.white : (isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
         )
         .cornerRadius(6)
+        .shadow(
+            color: viewModel.isEditingTitle && isActive ? Color.black.opacity(0.1) : Color.clear,
+            radius: viewModel.isEditingTitle && isActive ? 4 : 0,
+            x: 0,
+            y: viewModel.isEditingTitle && isActive ? 2 : 0
+        )
         .onHover { hovering in
             isHovered = hovering
         }
