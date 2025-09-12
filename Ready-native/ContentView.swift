@@ -6,10 +6,54 @@
 //
 
 import SwiftUI
+import AppKit
+
+
+class FocusManager: ObservableObject {
+    static let shared = FocusManager()
+    
+    @Published var isContentViewFocused = true
+    @Published var isEditingMode = false
+    
+    private init() {}
+    
+    func setContentViewFocus() {
+        DispatchQueue.main.async {
+            // Get the current window
+            guard let window = NSApplication.shared.keyWindow else { return }
+            
+            // Make the window first responder
+            window.makeFirstResponder(nil)
+            
+            // Set our focus state
+            self.isContentViewFocused = true
+            self.isEditingMode = false
+        }
+    }
+    
+    func enterEditMode() {
+        DispatchQueue.main.async {
+            self.isEditingMode = true
+            self.isContentViewFocused = false
+        }
+    }
+    
+    func exitEditMode() {
+        DispatchQueue.main.async {
+            self.isEditingMode = false
+            
+            // Small delay to ensure TextEditor releases focus
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.setContentViewFocus()
+            }
+        }
+    }
+}
 
 struct ContentView: View {
     @State private var rightPanel = RightPanel()
     @State private var middlePanel = MiddlePanel()
+    @StateObject private var focusManager = FocusManager.shared
     @FocusState private var isContentViewFocused: Bool
     
     var body: some View {
@@ -34,14 +78,28 @@ struct ContentView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($isContentViewFocused)
+        .onTapGesture {
+            // Ensure ContentView gets focus when tapped
+            isContentViewFocused = true
+        }
         .onAppear {
             isContentViewFocused = true
         }
         .onChange(of: middlePanel.getTaskListViewModel().isEditingTitle) { _, isEditing in
-            if !isEditing {
-                // Restore focus to ContentView when exiting edit mode
-                DispatchQueue.main.async {
-                    isContentViewFocused = true
+            if isEditing {
+                isContentViewFocused = false
+            } else {
+                // Wait for the height animation to complete before setting focus
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    // Ensure the window can receive key events first
+                    if let window = NSApplication.shared.keyWindow {
+                        window.makeFirstResponder(nil)
+                    }
+                    
+                    // Then set ContentView focus
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isContentViewFocused = true
+                    }
                 }
             }
         }
@@ -61,12 +119,14 @@ struct ContentView: View {
             // Handle task list navigation
             let taskListViewModel = middlePanel.getTaskListViewModel()
             taskListViewModel.handleUpArrow()
+            isContentViewFocused = true
             return .handled
         }
         .onKeyPress(.downArrow) {
             // Handle task list navigation
             let taskListViewModel = middlePanel.getTaskListViewModel()
             taskListViewModel.handleDownArrow()
+            isContentViewFocused = true
             return .handled
         }
         .onKeyPress { keyPress in

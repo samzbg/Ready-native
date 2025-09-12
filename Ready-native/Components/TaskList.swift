@@ -19,38 +19,23 @@ struct TaskList: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.element.id) { index, task in
-                            VStack(spacing: 0) {
-                                // Top spacing for edit mode
-                                if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
-                                    Spacer()
-                                        .frame(height: 15)
-                                        .animation(.easeInOut(duration: 0.3), value: viewModel.isEditingTitle)
-                                }
-                                
-                                TaskRowView(
-                                    task: task,
-                                    isActive: viewModel.activeTaskIndex == index,
-                                    onToggle: { 
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            viewModel.toggleTaskStatus(task)
-                                        }
-                                    },
-                                    onSelect: { 
-                                        viewModel.selectTask(at: index)
-                                    },
-                                    viewModel: viewModel
-                                )
-                                
-                                // Bottom spacing for edit mode
-                                if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
-                                    Spacer()
-                                        .frame(height: 30)
-                                        .animation(.easeInOut(duration: 0.3), value: viewModel.isEditingTitle)
-                                }
-                            }
+                        ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.offset) { index, task in
+                            TaskRowView(
+                                task: task,
+                                isActive: viewModel.activeTaskIndex == index,
+                                onToggle: { 
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        viewModel.toggleTaskStatus(task)
+                                    }
+                                },
+                                onSelect: { 
+                                    viewModel.selectTask(at: index)
+                                },
+                                viewModel: viewModel
+                            )
                         }
                     }
+                    .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle)
                     .padding(.horizontal, 24)
                 }
             }
@@ -93,9 +78,10 @@ struct TaskRowView: View {
     @State private var textEditorHeight: CGFloat = 20
     @FocusState private var isTextFieldFocused: Bool
     
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: viewModel.isEditingTitle && isActive ? .top : .center, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 // Checkbox
                 Button(action: onToggle) {
                     Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
@@ -103,6 +89,7 @@ struct TaskRowView: View {
                         .foregroundColor(task.status == .completed ? .green : .gray)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .offset(y: viewModel.isEditingTitle && isActive ? -6 : 0)
                 
                 // Task Title
                 ZStack(alignment: .leading) {
@@ -115,18 +102,27 @@ struct TaskRowView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, -4)
                         .padding(.vertical, -8)
-                        .padding(.top, 9)
+                        .offset(x: -1, y: 3)
                         .focused($isTextFieldFocused)
                         .onSubmit {
                             viewModel.saveTitleEdit()
                             isTextFieldFocused = false
                         }
                         .onAppear {
-                            isTextFieldFocused = true
+                            // Delay focus to ensure animation doesn't interfere
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isTextFieldFocused = true
+                            }
                         }
                         .onChange(of: viewModel.isEditingTitle) { _, isEditing in
                             if !isEditing {
+                                // Remove focus immediately
                                 isTextFieldFocused = false
+                            } else {
+                                // Re-focus when entering edit mode after animation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                    isTextFieldFocused = true
+                                }
                             }
                         }
                         .onChange(of: isTextFieldFocused) { _, focused in
@@ -151,6 +147,7 @@ struct TaskRowView: View {
                             .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
                             .lineLimit(1)
                             .truncationMode(.tail)
+                            .offset(y: 1)
                             .background(
                                 GeometryReader { geometry in
                                     Color.clear
@@ -192,23 +189,18 @@ struct TaskRowView: View {
         }
         .padding(.vertical, viewModel.isEditingTitle && isActive ? 12 : 6)
         .padding(.horizontal, 12)
-        .frame(minHeight: viewModel.isEditingTitle && isActive ? 136 : 28)
+        .frame(minHeight: viewModel.isEditingTitle && isActive ? 88 : 28)
         .background(
             viewModel.isEditingTitle && isActive ? Color.white : (isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
         )
         .cornerRadius(6)
-        .shadow(
-            color: viewModel.isEditingTitle && isActive ? Color.black.opacity(0.1) : Color.clear,
-            radius: viewModel.isEditingTitle && isActive ? 4 : 0,
-            x: 0,
-            y: viewModel.isEditingTitle && isActive ? 2 : 0
-        )
         .onHover { hovering in
             isHovered = hovering
         }
         .onTapGesture {
             onSelect()
         }
+        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
     }
 }
 
