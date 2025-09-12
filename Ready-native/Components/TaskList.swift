@@ -10,7 +10,6 @@ import Combine
 
 struct TaskList: View {
     @Bindable var viewModel: TaskListViewModel
-    @FocusState private var isFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,12 +38,6 @@ struct TaskList: View {
                                     },
                                     onSelect: { 
                                         viewModel.selectTask(at: index)
-                                        // Ensure focus when task is selected (but not when editing)
-                                        if !viewModel.isEditingTitle {
-                                            DispatchQueue.main.async {
-                                                isFocused = true
-                                            }
-                                        }
                                     },
                                     viewModel: viewModel
                                 )
@@ -63,23 +56,6 @@ struct TaskList: View {
             }
             
             Spacer()
-        }
-        .focused($isFocused)
-        .onTapGesture {
-            if !viewModel.isEditingTitle {
-                isFocused = true
-            }
-        }
-        .onAppear {
-            isFocused = true
-        }
-        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
-            if !isEditing {
-                // Restore focus to TaskList when exiting edit mode
-                DispatchQueue.main.async {
-                    isFocused = true
-                }
-            }
         }
         .background(Color.clear)
         .contentShape(Rectangle())
