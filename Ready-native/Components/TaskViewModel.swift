@@ -19,6 +19,10 @@ class TaskListViewModel {
     var error: Error?
     var activeTaskIndex: Int? = nil
     
+    // Editing state
+    var isEditingTitle = false
+    var editingTitleText = ""
+    
     init() {
         loadTasks()
         setupNotifications()
@@ -169,6 +173,60 @@ class TaskListViewModel {
         if activeTask != nil {
             archiveActiveTask()
         }
+    }
+    
+    func handleEnterKey() {
+        if isEditingTitle {
+            saveTitleEdit()
+        } else if activeTask != nil {
+            startTitleEdit()
+        }
+    }
+    
+    func handleEscapeKey() {
+        if isEditingTitle {
+            cancelTitleEdit()
+        }
+    }
+    
+    func startTitleEdit() {
+        guard let task = activeTask else { return }
+        isEditingTitle = true
+        // If the task title is "New task", start with empty text for better UX
+        editingTitleText = task.title == "New task" ? "" : task.title
+    }
+    
+    func saveTitleEdit() {
+        guard let task = activeTask,
+              !editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            cancelTitleEdit()
+            return
+        }
+        
+        do {
+            var updatedTask = task
+            updatedTask.title = editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines)
+            updatedTask.updatedAt = Date()
+            
+            try databaseService.updateTask(updatedTask)
+            
+            // Update local state
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[index] = updatedTask
+            }
+            
+            isEditingTitle = false
+            editingTitleText = ""
+            
+        } catch {
+            self.error = error
+            print("Error updating task title: \(error)")
+        }
+    }
+    
+    func cancelTitleEdit() {
+        isEditingTitle = false
+        editingTitleText = ""
     }
     
     // MARK: - Private Methods

@@ -31,11 +31,14 @@ struct TaskList: View {
                                 },
                                 onSelect: { 
                                     viewModel.selectTask(at: index)
-                                    // Ensure focus when task is selected
-                                    DispatchQueue.main.async {
-                                        isFocused = true
+                                    // Ensure focus when task is selected (but not when editing)
+                                    if !viewModel.isEditingTitle {
+                                        DispatchQueue.main.async {
+                                            isFocused = true
+                                        }
                                     }
-                                }
+                                },
+                                viewModel: viewModel
                             )
                         }
                     }
@@ -47,10 +50,20 @@ struct TaskList: View {
         }
         .focused($isFocused)
         .onTapGesture {
-            isFocused = true
+            if !viewModel.isEditingTitle {
+                isFocused = true
+            }
         }
         .onAppear {
             isFocused = true
+        }
+        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+            if !isEditing {
+                // Restore focus to TaskList when exiting edit mode
+                DispatchQueue.main.async {
+                    isFocused = true
+                }
+            }
         }
         .background(Color.clear)
         .contentShape(Rectangle())
@@ -75,8 +88,10 @@ struct TaskRowView: View {
     let isActive: Bool
     let onToggle: () -> Void
     let onSelect: () -> Void
+    @Bindable var viewModel: TaskListViewModel
     @State private var isHovered = false
     @State private var textWidth: CGFloat = 0
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         HStack(spacing: 12) {
@@ -90,27 +105,49 @@ struct TaskRowView: View {
             
             // Task Title
             ZStack(alignment: .leading) {
-                Text(task.title)
-                    .font(.system(size: 13))
-                    .foregroundColor(task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255))
-                    .background(
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
+                if viewModel.isEditingTitle && isActive {
+                    // Text field for editing
+                    TextField("Task title", text: $viewModel.editingTitleText)
+                        .font(.system(size: 13))
+                        .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            viewModel.saveTitleEdit()
+                            isTextFieldFocused = false
                         }
-                    )
-                
-                // Animated strikethrough line
-                if task.status == .completed {
-                    Rectangle()
-                        .fill(Color.secondary)
-                        .frame(width: textWidth, height: 1)
-                        .offset(y: 0)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
-                        ))
-                        .animation(.easeInOut(duration: 0.3), value: task.status)
+                        .onAppear {
+                            isTextFieldFocused = true
+                        }
+                        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+                            if !isEditing {
+                                isTextFieldFocused = false
+                            }
+                        }
+                } else {
+                    // Regular text display
+                    Text(task.title == "New task" ? "New task" : task.title)
+                        .font(.system(size: 13))
+                        .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
+                        .background(
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
+                            }
+                        )
+                    
+                    // Animated strikethrough line
+                    if task.status == .completed {
+                        Rectangle()
+                            .fill(Color.secondary)
+                            .frame(width: textWidth, height: 1)
+                            .offset(y: 0)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
+                                removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
+                            ))
+                            .animation(.easeInOut(duration: 0.3), value: task.status)
+                    }
                 }
             }
             .onPreferenceChange(TextWidthPreferenceKey.self) { width in

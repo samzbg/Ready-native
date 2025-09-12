@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var rightPanel = RightPanel()
     @State private var middlePanel = MiddlePanel()
+    @FocusState private var isContentViewFocused: Bool
     
     var body: some View {
         GeometryReader { geo in
@@ -32,6 +33,18 @@ struct ContentView: View {
         .ignoresSafeArea(.all)
         .focusable()
         .focusEffectDisabled()
+        .focused($isContentViewFocused)
+        .onAppear {
+            isContentViewFocused = true
+        }
+        .onChange(of: middlePanel.getTaskListViewModel().isEditingTitle) { _, isEditing in
+            if !isEditing {
+                // Restore focus to ContentView when exiting edit mode
+                DispatchQueue.main.async {
+                    isContentViewFocused = true
+                }
+            }
+        }
         .onKeyPress(.leftArrow) {
             // Check if middle panel should handle this first
             // For now, always handle calendar navigation
@@ -60,16 +73,35 @@ struct ContentView: View {
             // Handle delete key (MacBook Pro delete key that erases text)
             if keyPress.key == .delete || keyPress.key.character == "\u{7F}" {
                 let taskListViewModel = middlePanel.getTaskListViewModel()
-                taskListViewModel.handleDeleteKey()
-                return .handled
+                // Only handle delete key if not in edit mode
+                if !taskListViewModel.isEditingTitle {
+                    taskListViewModel.handleDeleteKey()
+                    return .handled
+                }
             }
             
             return .ignored
         }
+        .onKeyPress(.return) {
+            // Handle Enter key for task editing
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            taskListViewModel.handleEnterKey()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            // Handle Escape key for canceling edit mode
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            taskListViewModel.handleEscapeKey()
+            return .handled
+        }
         .onKeyPress { keyPress in
             if keyPress.key == .init("t") {
-                rightPanel.navigateToToday()
-                return .handled
+                let taskListViewModel = middlePanel.getTaskListViewModel()
+                // Only handle 't' key if not in edit mode
+                if !taskListViewModel.isEditingTitle {
+                    rightPanel.navigateToToday()
+                    return .handled
+                }
             }
             return .ignored
         }
