@@ -99,6 +99,13 @@ struct TextWidthPreferenceKey: PreferenceKey {
     }
 }
 
+struct TextEditorHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 20
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct TaskRowView: View {
     let task: Task
     let isActive: Bool
@@ -107,6 +114,7 @@ struct TaskRowView: View {
     @Bindable var viewModel: TaskListViewModel
     @State private var isHovered = false
     @State private var textWidth: CGFloat = 0
+    @State private var textEditorHeight: CGFloat = 20
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
@@ -123,11 +131,12 @@ struct TaskRowView: View {
                 // Task Title
                 ZStack(alignment: .leading) {
                     if viewModel.isEditingTitle && isActive {
-                    // Text field for editing
-                    TextField("Task title", text: $viewModel.editingTitleText)
+                    // Multi-line text editor that grows dynamically
+                    TextEditor(text: $viewModel.editingTitleText)
                         .font(.system(size: 13))
                         .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
-                        .textFieldStyle(PlainTextFieldStyle())
+                        .frame(minHeight: 20)
+                        .fixedSize(horizontal: false, vertical: true)
                         .focused($isTextFieldFocused)
                         .onSubmit {
                             viewModel.saveTitleEdit()
@@ -154,31 +163,35 @@ struct TaskRowView: View {
                                 }
                             }
                         }
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
                     } else {
-                        // Regular text display
+                        // Regular text display - single line with truncation
                         Text(task.title == "New task" ? "New task" : task.title)
                             .font(.system(size: 13))
                             .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                             .background(
                                 GeometryReader { geometry in
                                     Color.clear
                                         .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
                                 }
                             )
-                        
-                        // Animated strikethrough line
-                        if task.status == .completed {
-                            Rectangle()
-                                .fill(Color.secondary)
-                                .frame(width: textWidth, height: 1)
-                                .offset(y: 0)
-                                .transition(.asymmetric(
-                                    insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
-                                    removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
-                                ))
-                                .animation(.easeInOut(duration: 0.3), value: task.status)
+                            
+                            // Animated strikethrough line
+                            if task.status == .completed {
+                                Rectangle()
+                                    .fill(Color.secondary)
+                                    .frame(width: textWidth, height: 1)
+                                    .offset(y: 0)
+                                    .transition(.asymmetric(
+                                        insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
+                                        removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
+                                    ))
+                                    .animation(.easeInOut(duration: 0.3), value: task.status)
+                            }
                         }
-                    }
                 }
                 .onPreferenceChange(TextWidthPreferenceKey.self) { width in
                     textWidth = width
@@ -200,7 +213,7 @@ struct TaskRowView: View {
         }
         .padding(.vertical, viewModel.isEditingTitle && isActive ? 12 : 6)
         .padding(.horizontal, 12)
-        .frame(height: viewModel.isEditingTitle && isActive ? 136 : 28)
+        .frame(minHeight: viewModel.isEditingTitle && isActive ? 136 : 28)
         .background(
             viewModel.isEditingTitle && isActive ? Color.white : (isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
         )
@@ -240,6 +253,7 @@ struct EmptyStateView: View {
         .padding(.top, 60)
     }
 }
+
 
 #Preview {
     TaskList(viewModel: TaskListViewModel())
