@@ -21,14 +21,6 @@ struct TaskList: View {
                     .foregroundColor(.primary)
                 
                 Spacer()
-                
-                Text("\(viewModel.filteredTasks.count)")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(12)
             }
             .padding(.horizontal, 24)
             .padding(.top, 24)
@@ -100,8 +92,8 @@ struct TaskRowView: View {
             
             // Task Title
             Text(task.title)
-                .font(.system(size: 14))
-                .foregroundColor(task.status == .completed ? .secondary : .primary)
+                .font(.system(size: 13))
+                .foregroundColor(task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255))
                 .strikethrough(task.status == .completed)
             
             Spacer()
@@ -116,14 +108,9 @@ struct TaskRowView: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .background(
-            isActive ? Color.blue.opacity(0.1) : 
-            (isHovered ? Color.gray.opacity(0.05) : Color.clear)
+            isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear
         )
         .cornerRadius(6)
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(isActive ? Color.blue : Color.clear, lineWidth: 1)
-        )
         .onHover { hovering in
             isHovered = hovering
         }
