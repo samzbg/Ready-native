@@ -119,7 +119,7 @@ struct TaskRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: viewModel.isEditingTitle && isActive ? .top : .center, spacing: 12) {
                 // Checkbox
                 Button(action: onToggle) {
                     Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
@@ -137,6 +137,9 @@ struct TaskRowView: View {
                         .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
                         .frame(minHeight: 20)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, -4)
+                        .padding(.vertical, -8)
+                        .padding(.top, 9)
                         .focused($isTextFieldFocused)
                         .onSubmit {
                             viewModel.saveTitleEdit()
