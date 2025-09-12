@@ -21,25 +21,39 @@ struct TaskList: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.element.id) { index, task in
-                            TaskRowView(
-                                task: task,
-                                isActive: viewModel.activeTaskIndex == index,
-                                onToggle: { 
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        viewModel.toggleTaskStatus(task)
-                                    }
-                                },
-                                onSelect: { 
-                                    viewModel.selectTask(at: index)
-                                    // Ensure focus when task is selected (but not when editing)
-                                    if !viewModel.isEditingTitle {
-                                        DispatchQueue.main.async {
-                                            isFocused = true
+                            VStack(spacing: 0) {
+                                // Top spacing for edit mode
+                                if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
+                                    Spacer()
+                                        .frame(height: 30)
+                                }
+                                
+                                TaskRowView(
+                                    task: task,
+                                    isActive: viewModel.activeTaskIndex == index,
+                                    onToggle: { 
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            viewModel.toggleTaskStatus(task)
                                         }
-                                    }
-                                },
-                                viewModel: viewModel
-                            )
+                                    },
+                                    onSelect: { 
+                                        viewModel.selectTask(at: index)
+                                        // Ensure focus when task is selected (but not when editing)
+                                        if !viewModel.isEditingTitle {
+                                            DispatchQueue.main.async {
+                                                isFocused = true
+                                            }
+                                        }
+                                    },
+                                    viewModel: viewModel
+                                )
+                                
+                                // Bottom spacing for edit mode
+                                if viewModel.isEditingTitle && viewModel.activeTaskIndex == index {
+                                    Spacer()
+                                        .frame(height: 50)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 24)

@@ -56,6 +56,9 @@ class TaskListViewModel {
     }
     
     func moveSelectionUp() {
+        // Disable navigation when editing title
+        guard !isEditingTitle else { return }
+        
         guard let currentIndex = activeTaskIndex else {
             // Select last task if none selected
             if !filteredTasks.isEmpty {
@@ -69,6 +72,9 @@ class TaskListViewModel {
     }
     
     func moveSelectionDown() {
+        // Disable navigation when editing title
+        guard !isEditingTitle else { return }
+        
         guard let currentIndex = activeTaskIndex else {
             // Select first task if none selected
             if !filteredTasks.isEmpty {
