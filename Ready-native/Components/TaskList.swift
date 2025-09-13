@@ -90,12 +90,13 @@ struct TaskRowView: View {
             HStack(alignment: .top, spacing: 12) {
                 // Checkbox
                 Button(action: onToggle) {
-                    Image(systemName: task.status == .completed ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 16))
-                        .foregroundColor(task.status == .completed ? .green : .gray)
+                    Image(task.status == .completed ? "Checked" : "Unchecked")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 12, height: 12)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .offset(y: viewModel.isEditingTitle && isActive ? -6 : 0)
+                .offset(y: viewModel.isEditingTitle && isActive ? -3 : 3)
                 
                 // Task Title
                 ZStack(alignment: .leading) {
@@ -108,7 +109,7 @@ struct TaskRowView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, -4)
                         .padding(.vertical, -8)
-                        .offset(x: -1, y: 3)
+                        .offset(x: -3, y: 3)
                         .focused($isTextFieldFocused)
                         .onSubmit {
                             viewModel.saveTitleEdit()
@@ -153,7 +154,7 @@ struct TaskRowView: View {
                             .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
                             .lineLimit(1)
                             .truncationMode(.tail)
-                            .offset(y: 1)
+                            .offset(x: -2, y: 1)
                             .background(
                                 GeometryReader { geometry in
                                     Color.clear
