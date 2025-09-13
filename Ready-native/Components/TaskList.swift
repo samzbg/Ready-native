@@ -132,51 +132,42 @@ struct TaskRowView: View {
                 .buttonStyle(PlainButtonStyle())
                 .padding(.top, viewModel.isEditingTitle && isActive ? 32.5 : 7.5)
                 
-                // Task Title - TextEditor for active task, Text for inactive tasks
+                // Task Title - TextEditor for all tasks
                 ZStack(alignment: .leading) {
                     VStack(spacing: 0) {
                         Spacer()
                             .frame(height: viewModel.isEditingTitle && isActive ? 30 : 5)
                         
-                        if isActive {
-                            // TextEditor for active task
-                            TextEditor(text: Binding(
-                                get: {
-                                    viewModel.isEditingTitle ? viewModel.editingTitleText : (task.title == "New task" ? "New task" : task.title)
-                                },
-                                set: { newValue in
-                                    if viewModel.isEditingTitle {
-                                        viewModel.editingTitleText = newValue
-                                    }
+                        // TextEditor for all tasks
+                        TextEditor(text: Binding(
+                            get: {
+                                viewModel.isEditingTitle && isActive ? viewModel.editingTitleText : (task.title == "New task" ? "New task" : task.title)
+                            },
+                            set: { newValue in
+                                if viewModel.isEditingTitle && isActive {
+                                    viewModel.editingTitleText = newValue
                                 }
-                            ))
-                            .font(.system(size: 13))
-                            .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding(.horizontal, -4)
-                            .offset(x: -4)
-                            .scrollContentBackground(.hidden)
-                            .background(Color.clear)
-                            .focused($isTextFieldFocused)
-                            .textFieldStyle(.plain)
-                            .disabled(!viewModel.isEditingTitle)
-                            .onExitCommand {
+                            }
+                        ))
+                        .font(.system(size: 13))
+                        .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .padding(.horizontal, -4)
+                        .offset(x: -4)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                        .focused($isTextFieldFocused)
+                        .textFieldStyle(.plain)
+                        .disabled(!viewModel.isEditingTitle || !isActive)
+                        .onExitCommand {
+                            if viewModel.isEditingTitle && isActive {
                                 viewModel.cancelTitleEdit()
                                 // Ensure focus returns to TaskList after exiting edit mode
                                 DispatchQueue.main.async {
                                     onRestoreFocus()
                                 }
                             }
-                        } else {
-                            // Text for inactive tasks (non-focusable)
-                            Text(task.title == "New task" ? "New task" : task.title)
-                                .font(.system(size: 13))
-                                .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .multilineTextAlignment(.leading)
-                                .allowsHitTesting(false) // Prevents focus and interaction
-                                .offset(x: -3) // Move text 2px to the left
                         }
                         
                         Spacer()
@@ -200,8 +191,14 @@ struct TaskRowView: View {
                             DispatchQueue.main.async {
                                 onRestoreFocus()
                             }
-                        } else if isActive {
+                        } else if isActive && isEditing {
                             isTextFieldFocused = true
+                        }
+                    }
+                    .onChange(of: isActive) { _, newIsActive in
+                        // When task becomes inactive, remove focus from its TextEditor
+                        if !newIsActive {
+                            isTextFieldFocused = false
                         }
                     }
                     .background(
