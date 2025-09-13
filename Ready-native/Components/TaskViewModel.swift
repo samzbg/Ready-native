@@ -24,6 +24,9 @@ class TaskListViewModel {
     var editingTitleText = ""
     private var isProcessingEditAction = false
     
+    // Navigation state
+    var isKeyboardNavigating = false
+    
     init() {
         loadTasks()
         setupNotifications()
@@ -47,7 +50,9 @@ class TaskListViewModel {
     
     func selectTask(at index: Int) {
         guard index >= 0 && index < filteredTasks.count else { return }
+        print("🔍 TaskViewModel selectTask - index: \(index), task: \(filteredTasks[index].title), previous activeTaskIndex: \(activeTaskIndex ?? -1)")
         activeTaskIndex = index
+        print("🔍 TaskViewModel selectTask - Set activeTaskIndex to \(index)")
     }
     
     func selectTask(_ task: Task) {
@@ -60,6 +65,9 @@ class TaskListViewModel {
         // Disable navigation when editing title
         guard !isEditingTitle else { return }
         
+        // Mark that we're keyboard navigating
+        isKeyboardNavigating = true
+        
         guard let currentIndex = activeTaskIndex else {
             // Select last task if none selected
             if !filteredTasks.isEmpty {
@@ -70,11 +78,21 @@ class TaskListViewModel {
         
         let newIndex = max(0, currentIndex - 1)
         selectTask(at: newIndex)
+        
+        // Reset keyboard navigation flag after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isKeyboardNavigating = false
+            // Notify that navigation is complete
+            NotificationCenter.default.post(name: NSNotification.Name("KeyboardNavigationComplete"), object: nil)
+        }
     }
     
     func moveSelectionDown() {
         // Disable navigation when editing title
         guard !isEditingTitle else { return }
+        
+        // Mark that we're keyboard navigating
+        isKeyboardNavigating = true
         
         guard let currentIndex = activeTaskIndex else {
             // Select first task if none selected
@@ -86,6 +104,13 @@ class TaskListViewModel {
         
         let newIndex = min(filteredTasks.count - 1, currentIndex + 1)
         selectTask(at: newIndex)
+        
+        // Reset keyboard navigation flag after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isKeyboardNavigating = false
+            // Notify that navigation is complete
+            NotificationCenter.default.post(name: NSNotification.Name("KeyboardNavigationComplete"), object: nil)
+        }
     }
     
     func archiveActiveTask() {
@@ -205,8 +230,10 @@ class TaskListViewModel {
     func startTitleEdit() {
         guard let task = activeTask, !isProcessingEditAction else { return }
         
+        print("🔍 TaskViewModel startTitleEdit - Task: \(task.title), activeTaskIndex: \(activeTaskIndex ?? -1)")
         isProcessingEditAction = true
         isEditingTitle = true
+        print("🔍 TaskViewModel startTitleEdit - Set isEditingTitle to true")
         // If the task title is "New task", start with empty text for better UX
         editingTitleText = task.title == "New task" ? "" : task.title
         
@@ -219,6 +246,7 @@ class TaskListViewModel {
     func saveTitleEdit() {
         guard let task = activeTask, !isProcessingEditAction else { return }
         
+        print("🔍 TaskViewModel saveTitleEdit - Task: \(task.title), activeTaskIndex: \(activeTaskIndex ?? -1)")
         isProcessingEditAction = true
         
         guard !editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -255,8 +283,10 @@ class TaskListViewModel {
     func cancelTitleEdit() {
         guard !isProcessingEditAction else { return }
         
+        print("🔍 TaskViewModel cancelTitleEdit - activeTaskIndex: \(activeTaskIndex ?? -1)")
         isProcessingEditAction = true
         isEditingTitle = false
+        print("🔍 TaskViewModel cancelTitleEdit - Set isEditingTitle to false")
         editingTitleText = ""
         
         // Reset processing flag after a short delay

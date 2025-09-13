@@ -84,7 +84,6 @@ struct TaskRowView: View {
     @State private var textEditorHeight: CGFloat = 20
     @FocusState private var isTextFieldFocused: Bool
     
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
@@ -96,85 +95,77 @@ struct TaskRowView: View {
                         .frame(width: 12, height: 12)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .offset(y: viewModel.isEditingTitle && isActive ? -3 : 3)
+                .padding(.top, viewModel.isEditingTitle && isActive ? 32.5 : 7.5)
                 
-                // Task Title
+                // Task Title - Single TextEditor for both modes
                 ZStack(alignment: .leading) {
-                    if viewModel.isEditingTitle && isActive {
-                    // Multi-line text editor that grows dynamically
-                    TextEditor(text: $viewModel.editingTitleText)
+                    VStack(spacing: 0) {
+                        Spacer()
+                            .frame(height: viewModel.isEditingTitle && isActive ? 30 : 5)
+                        
+                        TextEditor(text: Binding(
+                            get: {
+                                viewModel.isEditingTitle && isActive ? viewModel.editingTitleText : (task.title == "New task" ? "New task" : task.title)
+                            },
+                            set: { newValue in
+                                if viewModel.isEditingTitle && isActive {
+                                    viewModel.editingTitleText = newValue
+                                }
+                            }
+                        ))
                         .font(.system(size: 13))
-                        .foregroundColor(Color(red: 74/255, green: 73/255, blue: 71/255))
-                        .frame(minHeight: 20)
+                        .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .padding(.horizontal, -4)
-                        .padding(.vertical, -8)
-                        .offset(x: -3, y: 3)
+                        .offset(x: -4)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
                         .focused($isTextFieldFocused)
-                        .onSubmit {
+                        .textFieldStyle(.plain)
+                        .disabled(!viewModel.isEditingTitle || !isActive)
+                        
+                        Spacer()
+                            .frame(height: viewModel.isEditingTitle && isActive ? 56 : 6)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .onSubmit {
+                        if viewModel.isEditingTitle && isActive {
                             viewModel.saveTitleEdit()
                             isTextFieldFocused = false
                         }
-                        .onAppear {
-                            // Delay focus to ensure animation doesn't interfere
+                    }
+                    .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+                        if !isEditing {
+                            isTextFieldFocused = false
+                        } else if isActive {
+                            // Focus when entering edit mode
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isTextFieldFocused = true
-                            }
-                        }
-                        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
-                            if !isEditing {
-                                // Remove focus immediately
-                                isTextFieldFocused = false
-                            } else {
-                                // Re-focus when entering edit mode after animation
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                if viewModel.isEditingTitle && isActive {
                                     isTextFieldFocused = true
                                 }
                             }
                         }
-                        .onChange(of: isTextFieldFocused) { _, focused in
-                            if focused {
-                                // Position cursor at end of text using a safe approach
-                                let currentText = viewModel.editingTitleText
-                                if !currentText.isEmpty {
-                                    // Temporarily modify text to position cursor at end
-                                    viewModel.editingTitleText = currentText + " "
-                                    DispatchQueue.main.async {
-                                        viewModel.editingTitleText = currentText
-                                    }
-                                }
-                            }
+                    }
+                    .background(
+                        GeometryReader { geometry in
+                            Color.clear
+                                .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
                         }
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                    } else {
-                        // Regular text display - single line with truncation
-                        Text(task.title == "New task" ? "New task" : task.title)
-                            .font(.system(size: 13))
-                            .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .offset(x: -2, y: 1)
-                            .background(
-                                GeometryReader { geometry in
-                                    Color.clear
-                                        .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
-                                }
-                            )
-                            
-                            // Animated strikethrough line
-                            if task.status == .completed {
-                                Rectangle()
-                                    .fill(Color.secondary)
-                                    .frame(width: textWidth, height: 1)
-                                    .offset(y: 0)
-                                    .transition(.asymmetric(
-                                        insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
-                                        removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
-                                    ))
-                                    .animation(.easeInOut(duration: 0.3), value: task.status)
-                            }
-                        }
+                    )
+                    
+                    // Animated strikethrough line for completed tasks
+                    if task.status == .completed && !viewModel.isEditingTitle {
+                        Rectangle()
+                            .fill(Color.secondary)
+                            .frame(width: textWidth, height: 1)
+                            .offset(y: 0)
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
+                                removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
+                            ))
+                            .animation(.easeInOut(duration: 0.3), value: task.status)
+                    }
                 }
                 .onPreferenceChange(TextWidthPreferenceKey.self) { width in
                     textWidth = width
@@ -190,17 +181,13 @@ struct TaskRowView: View {
                 }
             }
             
-            if viewModel.isEditingTitle && isActive {
-                Spacer()
-            }
         }
-        .padding(.vertical, viewModel.isEditingTitle && isActive ? 12 : 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
-        .frame(minHeight: viewModel.isEditingTitle && isActive ? 88 : 28)
-        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
         .background(
             viewModel.isEditingTitle && isActive ? Color.white : (isActive && !viewModel.isEditingTitle ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
         )
+        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
         .cornerRadius(6)
         .onHover { hovering in
             isHovered = hovering
@@ -222,7 +209,7 @@ struct TaskRowView: View {
                     viewModel.startTitleEdit() // Then start editing
                 }
         )
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .animation(.none, value: viewModel.isEditingTitle && isActive)
     }
 }
@@ -248,8 +235,9 @@ struct EmptyStateView: View {
     }
 }
 
-
 #Preview {
     TaskList(viewModel: TaskListViewModel())
         .frame(width: 475, height: 400)
 }
+
+

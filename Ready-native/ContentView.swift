@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import Combine
 
 
 class FocusManager: ObservableObject {
@@ -22,12 +23,17 @@ class FocusManager: ObservableObject {
             // Get the current window
             guard let window = NSApplication.shared.keyWindow else { return }
             
-            // Make the window first responder
-            window.makeFirstResponder(nil)
+            // Make the window content view the first responder to prevent TextEditor auto-focus
+            window.makeFirstResponder(window.contentView)
             
             // Set our focus state
             self.isContentViewFocused = true
             self.isEditingMode = false
+            
+            // Additional focus management to ensure ContentView gets focus
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                window.makeFirstResponder(window.contentView)
+            }
         }
     }
     
@@ -54,7 +60,13 @@ struct ContentView: View {
     @State private var rightPanel = RightPanel()
     @State private var middlePanel = MiddlePanel()
     @StateObject private var focusManager = FocusManager.shared
-    @FocusState private var isContentViewFocused: Bool
+    @FocusState private var isContentViewFocused: Bool {
+        didSet {
+            print("🔍 ContentView @FocusState didSet - oldValue: \(oldValue), newValue: \(isContentViewFocused)")
+        }
+    }
+    
+    @State private var debugFocusAttempts = 0
     
     var body: some View {
         GeometryReader { geo in
@@ -80,27 +92,50 @@ struct ContentView: View {
         .focused($isContentViewFocused)
         .onTapGesture {
             // Ensure ContentView gets focus when tapped
+            print("🔍 ContentView onTapGesture - Setting isContentViewFocused to true")
             isContentViewFocused = true
+            // Use AppKit to ensure the window can receive keyboard events
+            if let window = NSApplication.shared.keyWindow {
+                window.makeFirstResponder(nil)
+            }
         }
         .onAppear {
+            print("🔍 ContentView onAppear - Setting isContentViewFocused to true")
+            debugFocusAttempts += 1
+            print("🔍 ContentView onAppear - Focus attempt #\(debugFocusAttempts)")
+            
+            // Use FocusManager to ensure proper focus management
+            focusManager.setContentViewFocus()
+            
+            // Set focus state after a short delay to ensure it takes effect
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isContentViewFocused = true
+                print("🔍 ContentView onAppear - After setting focus, isContentViewFocused: \(self.isContentViewFocused)")
+            }
+            
+            // Additional delay to ensure focus is properly set after all views are loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.isContentViewFocused = true
+                self.focusManager.setContentViewFocus()
+                print("🔍 ContentView onAppear - Final focus attempt, isContentViewFocused: \(self.isContentViewFocused)")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("KeyboardNavigationComplete"))) { _ in
+            print("🔍 ContentView - Keyboard navigation complete, ensuring focus")
             isContentViewFocused = true
+            focusManager.setContentViewFocus()
         }
         .onChange(of: middlePanel.getTaskListViewModel().isEditingTitle) { _, isEditing in
+            print("🔍 ContentView onChange isEditingTitle - isEditing: \(isEditing)")
             if isEditing {
+                print("🔍 ContentView onChange - Entering edit mode, setting isContentViewFocused to false")
                 isContentViewFocused = false
+                focusManager.enterEditMode()
             } else {
-                // Wait for the height animation to complete before setting focus
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    // Ensure the window can receive key events first
-                    if let window = NSApplication.shared.keyWindow {
-                        window.makeFirstResponder(nil)
-                    }
-                    
-                    // Then set ContentView focus
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        isContentViewFocused = true
-                    }
-                }
+                print("🔍 ContentView onChange - Exiting edit mode, restoring ContentView focus")
+                isContentViewFocused = true
+                // Use FocusManager to ensure proper focus restoration
+                focusManager.exitEditMode()
             }
         }
         .onKeyPress(.leftArrow) {
@@ -126,17 +161,31 @@ struct ContentView: View {
             return .handled
         }
         .onKeyPress(.upArrow) {
+            print("🔍 ContentView - Up arrow key pressed, isContentViewFocused: \(isContentViewFocused)")
             // Handle task list navigation
             let taskListViewModel = middlePanel.getTaskListViewModel()
             taskListViewModel.handleUpArrow()
-            isContentViewFocused = true
+            
+            // Ensure ContentView maintains focus after navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isContentViewFocused = true
+                self.focusManager.setContentViewFocus()
+                print("🔍 ContentView - Restored focus after up arrow navigation")
+            }
             return .handled
         }
         .onKeyPress(.downArrow) {
+            print("🔍 ContentView - Down arrow key pressed, isContentViewFocused: \(isContentViewFocused)")
             // Handle task list navigation
             let taskListViewModel = middlePanel.getTaskListViewModel()
             taskListViewModel.handleDownArrow()
-            isContentViewFocused = true
+            
+            // Ensure ContentView maintains focus after navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isContentViewFocused = true
+                self.focusManager.setContentViewFocus()
+                print("🔍 ContentView - Restored focus after down arrow navigation")
+            }
             return .handled
         }
         .onKeyPress { keyPress in
