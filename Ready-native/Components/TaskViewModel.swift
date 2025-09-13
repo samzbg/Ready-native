@@ -22,7 +22,6 @@ class TaskListViewModel {
     // Editing state
     var isEditingTitle = false
     var editingTitleText = ""
-    private var isProcessingEditAction = false
     
     // Navigation state
     var isKeyboardNavigating = false
@@ -50,9 +49,7 @@ class TaskListViewModel {
     
     func selectTask(at index: Int) {
         guard index >= 0 && index < filteredTasks.count else { return }
-        print("🔍 TaskViewModel selectTask - index: \(index), task: \(filteredTasks[index].title), previous activeTaskIndex: \(activeTaskIndex ?? -1)")
         activeTaskIndex = index
-        print("🔍 TaskViewModel selectTask - Set activeTaskIndex to \(index)")
     }
     
     func selectTask(_ task: Task) {
@@ -79,12 +76,7 @@ class TaskListViewModel {
         let newIndex = max(0, currentIndex - 1)
         selectTask(at: newIndex)
         
-        // Reset keyboard navigation flag after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isKeyboardNavigating = false
-            // Notify that navigation is complete
-            NotificationCenter.default.post(name: NSNotification.Name("KeyboardNavigationComplete"), object: nil)
-        }
+        isKeyboardNavigating = false
     }
     
     func moveSelectionDown() {
@@ -105,12 +97,7 @@ class TaskListViewModel {
         let newIndex = min(filteredTasks.count - 1, currentIndex + 1)
         selectTask(at: newIndex)
         
-        // Reset keyboard navigation flag after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isKeyboardNavigating = false
-            // Notify that navigation is complete
-            NotificationCenter.default.post(name: NSNotification.Name("KeyboardNavigationComplete"), object: nil)
-        }
+        isKeyboardNavigating = false
     }
     
     func archiveActiveTask() {
@@ -205,9 +192,6 @@ class TaskListViewModel {
     }
     
     func handleEnterKey() {
-        // Prevent rapid key presses from causing race conditions
-        guard !isProcessingEditAction else { return }
-        
         if isEditingTitle {
             saveTitleEdit()
         } else if activeTask != nil {
@@ -216,9 +200,6 @@ class TaskListViewModel {
     }
     
     func handleEscapeKey() {
-        // Prevent rapid key presses from causing race conditions
-        guard !isProcessingEditAction else { return }
-        
         if isEditingTitle {
             cancelTitleEdit()
         } else {
@@ -228,26 +209,14 @@ class TaskListViewModel {
     }
     
     func startTitleEdit() {
-        guard let task = activeTask, !isProcessingEditAction else { return }
+        guard let task = activeTask else { return }
         
-        print("🔍 TaskViewModel startTitleEdit - Task: \(task.title), activeTaskIndex: \(activeTaskIndex ?? -1)")
-        isProcessingEditAction = true
         isEditingTitle = true
-        print("🔍 TaskViewModel startTitleEdit - Set isEditingTitle to true")
-        // If the task title is "New task", start with empty text for better UX
         editingTitleText = task.title == "New task" ? "" : task.title
-        
-        // Reset processing flag after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isProcessingEditAction = false
-        }
     }
     
     func saveTitleEdit() {
-        guard let task = activeTask, !isProcessingEditAction else { return }
-        
-        print("🔍 TaskViewModel saveTitleEdit - Task: \(task.title), activeTaskIndex: \(activeTaskIndex ?? -1)")
-        isProcessingEditAction = true
+        guard let task = activeTask else { return }
         
         guard !editingTitleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             cancelTitleEdit()
@@ -271,28 +240,12 @@ class TaskListViewModel {
             
         } catch {
             self.error = error
-            print("Error updating task title: \(error)")
-        }
-        
-        // Reset processing flag after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isProcessingEditAction = false
         }
     }
     
     func cancelTitleEdit() {
-        guard !isProcessingEditAction else { return }
-        
-        print("🔍 TaskViewModel cancelTitleEdit - activeTaskIndex: \(activeTaskIndex ?? -1)")
-        isProcessingEditAction = true
         isEditingTitle = false
-        print("🔍 TaskViewModel cancelTitleEdit - Set isEditingTitle to false")
         editingTitleText = ""
-        
-        // Reset processing flag after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isProcessingEditAction = false
-        }
     }
     
     func clearActiveTask() {

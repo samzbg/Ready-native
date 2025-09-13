@@ -10,6 +10,7 @@ import Combine
 
 struct TaskList: View {
     @Bindable var viewModel: TaskListViewModel
+    @FocusState private var isTaskListFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,6 +32,9 @@ struct TaskList: View {
                                 onSelect: { 
                                     viewModel.selectTask(at: index)
                                 },
+                                onRestoreFocus: {
+                                    isTaskListFocused = true
+                                },
                                 viewModel: viewModel
                             )
                         }
@@ -44,17 +48,47 @@ struct TaskList: View {
         }
         .background(Color.clear)
         .contentShape(Rectangle())
+        .focusable()
+        .focused($isTaskListFocused)
+        .onAppear {
+            isTaskListFocused = true
+        }
         .onTapGesture {
             // Exit edit mode when clicking outside of task items
             if viewModel.isEditingTitle {
                 viewModel.cancelTitleEdit()
             }
+            isTaskListFocused = true
+        }
+        .onKeyPress(.upArrow) {
+            viewModel.handleUpArrow()
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            viewModel.handleDownArrow()
+            return .handled
         }
         .onKeyPress(.delete) {
-            if viewModel.activeTask != nil {
+            if !viewModel.isEditingTitle && viewModel.activeTask != nil {
                 viewModel.archiveActiveTask()
             }
             return .handled
+        }
+        .onKeyPress(.return) {
+            viewModel.handleEnterKey()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            viewModel.handleEscapeKey()
+            return .handled
+        }
+        .onChange(of: viewModel.isEditingTitle) { _, isEditing in
+            if !isEditing {
+                // Restore focus to TaskList when exiting edit mode
+                DispatchQueue.main.async {
+                    isTaskListFocused = true
+                }
+            }
         }
     }
 }
@@ -78,6 +112,7 @@ struct TaskRowView: View {
     let isActive: Bool
     let onToggle: () -> Void
     let onSelect: () -> Void
+    let onRestoreFocus: () -> Void
     @Bindable var viewModel: TaskListViewModel
     @State private var isHovered = false
     @State private var textWidth: CGFloat = 0
@@ -126,6 +161,13 @@ struct TaskRowView: View {
                             .focused($isTextFieldFocused)
                             .textFieldStyle(.plain)
                             .disabled(!viewModel.isEditingTitle)
+                            .onExitCommand {
+                                viewModel.cancelTitleEdit()
+                                // Ensure focus returns to TaskList after exiting edit mode
+                                DispatchQueue.main.async {
+                                    onRestoreFocus()
+                                }
+                            }
                         } else {
                             // Text for inactive tasks (non-focusable)
                             Text(task.title == "New task" ? "New task" : task.title)
@@ -145,18 +187,21 @@ struct TaskRowView: View {
                         if viewModel.isEditingTitle && isActive {
                             viewModel.saveTitleEdit()
                             isTextFieldFocused = false
+                            // Restore focus to TaskList after saving
+                            DispatchQueue.main.async {
+                                onRestoreFocus()
+                            }
                         }
                     }
                     .onChange(of: viewModel.isEditingTitle) { _, isEditing in
                         if !isEditing {
                             isTextFieldFocused = false
-                        } else if isActive {
-                            // Focus when entering edit mode
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                if viewModel.isEditingTitle && isActive {
-                                    isTextFieldFocused = true
-                                }
+                            // Restore focus to TaskList when exiting edit mode
+                            DispatchQueue.main.async {
+                                onRestoreFocus()
                             }
+                        } else if isActive {
+                            isTextFieldFocused = true
                         }
                     }
                     .background(
