@@ -104,14 +104,24 @@ struct ContentView: View {
             }
         }
         .onKeyPress(.leftArrow) {
-            // Check if middle panel should handle this first
-            // For now, always handle calendar navigation
+            // Check if task is in edit mode - if so, don't handle arrow keys
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            if taskListViewModel.isEditingTitle {
+                return .ignored
+            }
+            
+            // Handle calendar navigation
             rightPanel.previousDays()
             return .handled
         }
         .onKeyPress(.rightArrow) {
-            // Check if middle panel should handle this first
-            // For now, always handle calendar navigation
+            // Check if task is in edit mode - if so, don't handle arrow keys
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            if taskListViewModel.isEditingTitle {
+                return .ignored
+            }
+            
+            // Handle calendar navigation
             rightPanel.nextDays()
             return .handled
         }
