@@ -52,6 +52,7 @@ struct TaskList: View {
         .focusable()
         .focused($isTaskListFocused)
         .onAppear {
+            print("🔍 TaskList appeared, setting focus")
             isTaskListFocused = true
         }
         .onTapGesture {
@@ -70,7 +71,11 @@ struct TaskList: View {
             return .handled
         }
         .onKeyPress(.delete) {
+            print("🔍 Delete key pressed in TaskList")
+            print("🔍 isEditingTitle: \(viewModel.isEditingTitle)")
+            print("🔍 activeTask: \(viewModel.activeTask?.title ?? "nil")")
             if !viewModel.isEditingTitle && viewModel.activeTask != nil {
+                print("🔍 Archiving active task...")
                 viewModel.archiveActiveTask()
             }
             return .handled
@@ -123,7 +128,7 @@ struct TaskRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 7) {
                 // Checkbox
                 Button(action: onToggle) {
                     Image(task.status == .completed ? "Checked" : "Unchecked")
@@ -133,12 +138,14 @@ struct TaskRowView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .padding(.top, viewModel.isEditingTitle && isActive ? 32.5 : 7.5)
+                .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
                 
                 // Task Title - TextEditor for all tasks with smooth animations
                 ZStack(alignment: .leading) {
                     VStack(spacing: 0) {
                         Spacer()
                             .frame(height: viewModel.isEditingTitle && isActive ? 30 : 5)
+                            .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
                         
                         // Text view for display (behind TextEditor)
                         Text(task.title == "New task" ? "New task" : task.title)
@@ -147,7 +154,6 @@ struct TaskRowView: View {
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                             .multilineTextAlignment(.leading)
                             .allowsHitTesting(false)
-                            .offset(x: 3.5)
                             .opacity(viewModel.isEditingTitle && isActive ? 0 : 1)
                             .frame(height: viewModel.isEditingTitle && isActive ? 0 : nil)
                             .clipped()
@@ -186,7 +192,6 @@ struct TaskRowView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.top, 0)
-                        .offset(x: 3.5)
                         .scrollContentBackground(.hidden)
                         .scrollIndicators(.hidden)
                         .background(Color.clear)
@@ -206,8 +211,10 @@ struct TaskRowView: View {
                         
                         Spacer()
                             .frame(height: viewModel.isEditingTitle && isActive ? 56 : 6)
+                            .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.leading, 2)
                     .onChange(of: viewModel.isEditingTitle) { _, isEditing in
                         if !isEditing {
                             isTextFieldFocused = false
@@ -265,7 +272,7 @@ struct TaskRowView: View {
                 }
         )
         .buttonStyle(.plain)
-        .animation(.none, value: viewModel.isEditingTitle && isActive)
+        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
     }
 }
 

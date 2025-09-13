@@ -88,6 +88,21 @@ struct ContentView: View {
             return .ignored
         }
         .onKeyPress { keyPress in
+            print("🔍 Key pressed: \(keyPress.key)")
+            
+            if keyPress.key == KeyEquivalent("\u{7F}") {
+                print("🔍 Delete/Backspace key pressed in ContentView")
+                let taskListViewModel = middlePanel.getTaskListViewModel()
+                print("🔍 isEditingTitle: \(taskListViewModel.isEditingTitle)")
+                print("🔍 activeTask: \(taskListViewModel.activeTask?.title ?? "nil")")
+                if !taskListViewModel.isEditingTitle && taskListViewModel.activeTask != nil {
+                    print("🔍 Archiving active task from ContentView...")
+                    taskListViewModel.archiveActiveTask()
+                    return .handled
+                }
+                return .ignored
+            }
+            
             if keyPress.key == .init("t") {
                 // Check if task is in edit mode - if so, don't handle 't' key
                 let taskListViewModel = middlePanel.getTaskListViewModel()
