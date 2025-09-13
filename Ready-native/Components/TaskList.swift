@@ -200,6 +200,13 @@ struct TaskRowView: View {
         .onTapGesture {
             onSelect()
         }
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded {
+                    onSelect() // First select the task
+                    viewModel.startTitleEdit() // Then start editing
+                }
+        )
         .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
     }
 }
