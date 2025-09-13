@@ -20,7 +20,7 @@ struct TaskList: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.offset) { index, task in
+                        ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.element.id) { index, task in
                             TaskRowView(
                                 task: task,
                                 isActive: viewModel.activeTaskIndex == index,
@@ -37,6 +37,7 @@ struct TaskList: View {
                                 },
                                 viewModel: viewModel
                             )
+                            .id("\(task.id)-\(viewModel.activeTaskIndex == index)")
                         }
                     }
                     .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle)
@@ -75,8 +76,16 @@ struct TaskList: View {
             return .handled
         }
         .onKeyPress(.return) {
-            viewModel.handleEnterKey()
-            return .handled
+            if viewModel.isEditingTitle {
+                print("🔍 Return key pressed at TaskList level - saving...")
+                viewModel.saveTitleEdit()
+                return .handled
+            } else if viewModel.activeTask != nil {
+                print("🔍 Return key pressed - starting edit mode...")
+                viewModel.startTitleEdit()
+                return .handled
+            }
+            return .ignored
         }
         .onKeyPress(.escape) {
             viewModel.handleEscapeKey()
@@ -132,38 +141,71 @@ struct TaskRowView: View {
                 .buttonStyle(PlainButtonStyle())
                 .padding(.top, viewModel.isEditingTitle && isActive ? 32.5 : 7.5)
                 
-                // Task Title - TextEditor for all tasks
+                // Task Title - TextEditor for all tasks with smooth animations
                 ZStack(alignment: .leading) {
                     VStack(spacing: 0) {
                         Spacer()
                             .frame(height: viewModel.isEditingTitle && isActive ? 30 : 5)
                         
-                        // TextEditor for all tasks
-                        TextEditor(text: Binding(
-                            get: {
-                                viewModel.isEditingTitle && isActive ? viewModel.editingTitleText : (task.title == "New task" ? "New task" : task.title)
-                            },
-                            set: { newValue in
-                                if viewModel.isEditingTitle && isActive {
-                                    viewModel.editingTitleText = newValue
+                        // Text view for display (behind TextEditor)
+                        Text(task.title == "New task" ? "New task" : task.title)
+                            .font(.system(size: 13))
+                            .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
+                            .allowsHitTesting(false)
+                            .offset(x: -1)
+                            .opacity(viewModel.isEditingTitle && isActive ? 0 : 1)
+                            .frame(height: viewModel.isEditingTitle && isActive ? 0 : nil)
+                            .clipped()
+                        
+                        // TextEditor for editing (on top)
+                        CustomTextEditor(
+                            text: Binding(
+                                get: {
+                                    if viewModel.isEditingTitle && isActive {
+                                        return viewModel.editingTitleText
+                                    } else {
+                                        // Return empty string when not editing to prevent flash
+                                        return ""
+                                    }
+                                },
+                                set: { newValue in
+                                    if viewModel.isEditingTitle && isActive {
+                                        viewModel.editingTitleText = newValue
+                                    }
                                 }
-                            }
-                        ))
+                            ),
+                            onReturn: {
+                                if viewModel.isEditingTitle && isActive {
+                                    print("🔍 Return key pressed in CustomTextEditor - saving...")
+                                    viewModel.saveTitleEdit()
+                                    isTextFieldFocused = false
+                                    DispatchQueue.main.async {
+                                        onRestoreFocus()
+                                    }
+                                }
+                            },
+                            isFocused: $isTextFieldFocused
+                        )
                         .font(.system(size: 13))
                         .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, -4)
-                        .offset(x: -4)
+                        .padding(.top, 0)
+                        .offset(x: 3.5)
                         .scrollContentBackground(.hidden)
+                        .scrollIndicators(.hidden)
                         .background(Color.clear)
-                        .focused($isTextFieldFocused)
                         .textFieldStyle(.plain)
                         .disabled(!viewModel.isEditingTitle || !isActive)
+                        .opacity(viewModel.isEditingTitle && isActive ? 1 : 0)
+                        .frame(height: viewModel.isEditingTitle && isActive ? nil : 0)
+                        .clipped()
                         .onExitCommand {
                             if viewModel.isEditingTitle && isActive {
                                 viewModel.cancelTitleEdit()
-                                // Ensure focus returns to TaskList after exiting edit mode
                                 DispatchQueue.main.async {
                                     onRestoreFocus()
                                 }
@@ -174,20 +216,9 @@ struct TaskRowView: View {
                             .frame(height: viewModel.isEditingTitle && isActive ? 56 : 6)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .onSubmit {
-                        if viewModel.isEditingTitle && isActive {
-                            viewModel.saveTitleEdit()
-                            isTextFieldFocused = false
-                            // Restore focus to TaskList after saving
-                            DispatchQueue.main.async {
-                                onRestoreFocus()
-                            }
-                        }
-                    }
                     .onChange(of: viewModel.isEditingTitle) { _, isEditing in
                         if !isEditing {
                             isTextFieldFocused = false
-                            // Restore focus to TaskList when exiting edit mode
                             DispatchQueue.main.async {
                                 onRestoreFocus()
                             }
@@ -196,7 +227,6 @@ struct TaskRowView: View {
                         }
                     }
                     .onChange(of: isActive) { _, newIsActive in
-                        // When task becomes inactive, remove focus from its TextEditor
                         if !newIsActive {
                             isTextFieldFocused = false
                         }
@@ -286,6 +316,38 @@ struct EmptyStateView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 60)
+    }
+}
+
+struct CustomTextEditor: View {
+    @Binding var text: String
+    let onReturn: () -> Void
+    @FocusState.Binding var isFocused: Bool
+    
+    var body: some View {
+        TextField("", text: $text, axis: .vertical)
+            .focused($isFocused)
+            .onSubmit {
+                print("🔍 CustomTextEditor onSubmit called!")
+                onReturn()
+            }
+            .onKeyPress(.return) {
+                print("🔍 CustomTextEditor return key pressed!")
+                onReturn()
+                return .handled
+            }
+            .onChange(of: isFocused) { _, newValue in
+                if newValue {
+                    // Position cursor at the end of text when focused
+                    DispatchQueue.main.async {
+                        if let window = NSApplication.shared.keyWindow,
+                           let fieldEditor = window.firstResponder as? NSTextView {
+                            let textLength = fieldEditor.string.count
+                            fieldEditor.setSelectedRange(NSRange(location: textLength, length: 0))
+                        }
+                    }
+                }
+            }
     }
 }
 

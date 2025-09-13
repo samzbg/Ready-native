@@ -268,21 +268,21 @@ class TaskListViewModel {
     private func setupNotifications() {
         NotificationCenter.default.publisher(for: NSNotification.Name("TaskCreated"))
             .sink { [weak self] notification in
-                self?.loadTasks()
-                
-                // If a new task was created, select it and enter edit mode
+                // Only reload if a new task was created
                 if let newTask = notification.object as? Task {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        self?.selectNewTaskAndEnterEditMode(newTask)
-                    }
+                    self?.addNewTask(newTask)
                 }
             }
             .store(in: &cancellables)
         
-        NotificationCenter.default.publisher(for: NSNotification.Name("TaskArchived"))
-            .sink { [weak self] _ in
-                self?.loadTasks()
-            }
-            .store(in: &cancellables)
+        // Remove the TaskArchived notification listener since we handle updates locally
+    }
+    
+    private func addNewTask(_ newTask: Task) {
+        // Add the new task to the beginning of the list
+        tasks.insert(newTask, at: 0)
+        
+        // Select the new task and enter edit mode
+        selectNewTaskAndEnterEditMode(newTask)
     }
 }

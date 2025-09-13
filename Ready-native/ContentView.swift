@@ -68,19 +68,33 @@ struct ContentView: View {
             }
         }
         .onKeyPress(.leftArrow) {
-            // Handle calendar navigation
-            rightPanel.previousDays()
-            return .handled
+            // Check if task is in edit mode - if so, don't handle arrow keys
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            if !taskListViewModel.isEditingTitle {
+                // Handle calendar navigation
+                rightPanel.previousDays()
+                return .handled
+            }
+            return .ignored
         }
         .onKeyPress(.rightArrow) {
-            // Handle calendar navigation
-            rightPanel.nextDays()
-            return .handled
+            // Check if task is in edit mode - if so, don't handle arrow keys
+            let taskListViewModel = middlePanel.getTaskListViewModel()
+            if !taskListViewModel.isEditingTitle {
+                // Handle calendar navigation
+                rightPanel.nextDays()
+                return .handled
+            }
+            return .ignored
         }
         .onKeyPress { keyPress in
             if keyPress.key == .init("t") {
-                rightPanel.navigateToToday()
-                return .handled
+                // Check if task is in edit mode - if so, don't handle 't' key
+                let taskListViewModel = middlePanel.getTaskListViewModel()
+                if !taskListViewModel.isEditingTitle {
+                    rightPanel.navigateToToday()
+                    return .handled
+                }
             }
             return .ignored
         }

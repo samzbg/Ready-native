@@ -8,12 +8,16 @@ class RightPanel: ObservableObject {
     @Published var currentDate = Date()
     @Published var activeMeetingId: String? = nil
     @Published var isNavigatingForward = true
+    @Published fileprivate var currentDays: [DayModel] = []
     private var pendingDirection: Bool? = nil
-    private var cachedDays: [DayModel] = []
     private var lastCachedDate: Date?
     private let databaseService = DatabaseService.shared
     
-    fileprivate var currentDays: [DayModel] {
+    init() {
+        loadCurrentDays()
+    }
+    
+    private func loadCurrentDays() {
         let calendar = Calendar.current
         let firstDay = calendar.startOfDay(for: currentDate)
         
@@ -21,31 +25,33 @@ class RightPanel: ObservableObject {
         if lastCachedDate != firstDay {
             let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
             
-            do {
-                // Fetch events for both days
-                let firstDayEvents = try databaseService.getCalendarEvents(for: firstDay)
-                let secondDayEvents = try databaseService.getCalendarEvents(for: secondDay)
-                
-                print("📅 Fetched \(firstDayEvents.count) events for \(firstDay)")
-                print("📅 Fetched \(secondDayEvents.count) events for \(secondDay)")
-                
-                cachedDays = [
-                    DayModel(date: firstDay, events: firstDayEvents),
-                    DayModel(date: secondDay, events: secondDayEvents)
-                ]
-                lastCachedDate = firstDay
-            } catch {
-                print("❌ Error fetching calendar events: \(error)")
-                // Fallback to empty events
-                cachedDays = [
-                    DayModel(date: firstDay, events: []),
-                    DayModel(date: secondDay, events: [])
-                ]
-                lastCachedDate = firstDay
+            // Use async loading to avoid blocking the UI
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // Fetch events for both days
+                    let firstDayEvents = try self.databaseService.getCalendarEvents(for: firstDay)
+                    let secondDayEvents = try self.databaseService.getCalendarEvents(for: secondDay)
+                    
+                    DispatchQueue.main.async {
+                        self.currentDays = [
+                            DayModel(date: firstDay, events: firstDayEvents),
+                            DayModel(date: secondDay, events: secondDayEvents)
+                        ]
+                        self.lastCachedDate = firstDay
+                    }
+                } catch {
+                    print("❌ Error fetching calendar events: \(error)")
+                    // Fallback to empty events
+                    DispatchQueue.main.async {
+                        self.currentDays = [
+                            DayModel(date: firstDay, events: []),
+                            DayModel(date: secondDay, events: [])
+                        ]
+                        self.lastCachedDate = firstDay
+                    }
+                }
             }
         }
-        
-        return cachedDays
     }
     
     var currentMonthTitle: String {
@@ -68,25 +74,21 @@ class RightPanel: ObservableObject {
     func previousDays() {
         isNavigatingForward = false
         pendingDirection = false
-        // Use a small delay to avoid publishing during view updates
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                self.currentDate = Calendar.current.date(byAdding: .day, value: -2, to: self.currentDate) ?? self.currentDate
-            }
-            self.pendingDirection = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentDate = Calendar.current.date(byAdding: .day, value: -2, to: currentDate) ?? currentDate
         }
+        loadCurrentDays()
+        pendingDirection = nil
     }
     
     func nextDays() {
         isNavigatingForward = true
         pendingDirection = true
-        // Use a small delay to avoid publishing during view updates
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                self.currentDate = Calendar.current.date(byAdding: .day, value: 2, to: self.currentDate) ?? self.currentDate
-            }
-            self.pendingDirection = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentDate = Calendar.current.date(byAdding: .day, value: 2, to: currentDate) ?? currentDate
         }
+        loadCurrentDays()
+        pendingDirection = nil
     }
     
     func navigateToToday() {
@@ -107,13 +109,11 @@ class RightPanel: ObservableObject {
         
         isNavigatingForward = isTodayAfter
         pendingDirection = isTodayAfter
-        // Use a small delay to avoid publishing during view updates
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                self.currentDate = today
-            }
-            self.pendingDirection = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentDate = today
         }
+        loadCurrentDays()
+        pendingDirection = nil
     }
     
     func toggleEventActive(_ eventId: String) {

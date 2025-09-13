@@ -149,16 +149,6 @@ class DatabaseService: ObservableObject {
             let startOfDay = calendar.startOfDay(for: date)
             let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
             
-            print("🔍 Looking for events between \(startOfDay) and \(endOfDay)")
-            
-            // First, let's see what events we have in the database
-            let allEvents = try CalendarEvent.fetchAll(db)
-            print("📊 Total events in database: \(allEvents.count)")
-            
-            for event in allEvents {
-                print("   - \(event.summary ?? "Untitled") at \(event.start?.dateTime ?? "No time")")
-            }
-            
             // Convert dates to ISO8601 strings for comparison with JSON stored dates
             let formatter = ISO8601DateFormatter()
             let startOfDayString = formatter.string(from: startOfDay)
@@ -172,10 +162,7 @@ class DatabaseService: ObservableObject {
                 ORDER BY json_extract(start, '$.dateTime')
             """
             
-            let events = try CalendarEvent.fetchAll(db, sql: sql, arguments: [startOfDayString, endOfDayString])
-            
-            print("🎯 Found \(events.count) events for \(date)")
-            return events
+            return try CalendarEvent.fetchAll(db, sql: sql, arguments: [startOfDayString, endOfDayString])
         } ?? []
     }
     
