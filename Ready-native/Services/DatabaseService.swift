@@ -264,7 +264,7 @@ class DatabaseService: ObservableObject {
     
     func getTasks() throws -> [Task] {
         return try dbQueue?.read { db in
-            try Task.fetchAll(db)
+            try Task.order(Column("createdAt").desc).fetchAll(db)
         } ?? []
     }
 }

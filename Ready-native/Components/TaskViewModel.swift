@@ -145,24 +145,21 @@ class TaskListViewModel {
         }
     }
     
-    func createNewTask() {
-        let newTask = Task(
-            id: UUID().uuidString,
-            title: "New task",
-            description: nil,
-            dueDate: nil,
-            important: false
-        )
-        
-        do {
-            try databaseService.saveTask(newTask)
-            print("New task created: \(newTask.title)")
+    private func selectNewTaskAndEnterEditMode(_ newTask: Task) {
+        // Since tasks are now ordered by createdAt desc, the new task should be at index 0
+        // But let's still verify it's the correct task for safety
+        if !filteredTasks.isEmpty && filteredTasks[0].id == newTask.id {
+            // Select the new task (which is now at the top)
+            selectTask(at: 0)
             
-            // Post notification to refresh
-            NotificationCenter.default.post(name: NSNotification.Name("TaskCreated"), object: nil)
-        } catch {
-            self.error = error
-            print("Error creating task: \(error)")
+            // Enter edit mode
+            startTitleEdit()
+        } else {
+            // Fallback: search for the task if it's not at the expected position
+            if let index = filteredTasks.firstIndex(where: { $0.id == newTask.id }) {
+                selectTask(at: index)
+                startTitleEdit()
+            }
         }
     }
     
@@ -287,8 +284,15 @@ class TaskListViewModel {
     
     private func setupNotifications() {
         NotificationCenter.default.publisher(for: NSNotification.Name("TaskCreated"))
-            .sink { [weak self] _ in
+            .sink { [weak self] notification in
                 self?.loadTasks()
+                
+                // If a new task was created, select it and enter edit mode
+                if let newTask = notification.object as? Task {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self?.selectNewTaskAndEnterEditMode(newTask)
+                    }
+                }
             }
             .store(in: &cancellables)
         

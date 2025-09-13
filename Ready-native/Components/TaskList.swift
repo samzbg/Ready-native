@@ -44,6 +44,12 @@ struct TaskList: View {
         }
         .background(Color.clear)
         .contentShape(Rectangle())
+        .onTapGesture {
+            // Exit edit mode when clicking outside of task items
+            if viewModel.isEditingTitle {
+                viewModel.cancelTitleEdit()
+            }
+        }
         .onKeyPress(.delete) {
             if viewModel.activeTask != nil {
                 viewModel.archiveActiveTask()
@@ -190,16 +196,24 @@ struct TaskRowView: View {
         .padding(.vertical, viewModel.isEditingTitle && isActive ? 12 : 6)
         .padding(.horizontal, 12)
         .frame(minHeight: viewModel.isEditingTitle && isActive ? 88 : 28)
+        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
         .background(
-            viewModel.isEditingTitle && isActive ? Color.white : (isActive ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
+            viewModel.isEditingTitle && isActive ? Color.white : (isActive && !viewModel.isEditingTitle ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
         )
         .cornerRadius(6)
         .onHover { hovering in
             isHovered = hovering
         }
-        .onTapGesture {
-            onSelect()
-        }
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    // If we're currently editing another task, cancel edit mode first
+                    if viewModel.isEditingTitle && !isActive {
+                        viewModel.cancelTitleEdit()
+                    }
+                    onSelect()
+                }
+        )
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
@@ -207,7 +221,8 @@ struct TaskRowView: View {
                     viewModel.startTitleEdit() // Then start editing
                 }
         )
-        .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
+        .buttonStyle(PlainButtonStyle())
+        .animation(.none, value: viewModel.isEditingTitle && isActive)
     }
 }
 

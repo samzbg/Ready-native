@@ -23,8 +23,8 @@ class TaskViewModel {
             try databaseService.saveTask(newTask)
             print("New task created: \(newTask.title)")
             
-            // Post notification to refresh task list
-            NotificationCenter.default.post(name: NSNotification.Name("TaskCreated"), object: nil)
+            // Post notification to refresh task list and enter edit mode
+            NotificationCenter.default.post(name: NSNotification.Name("TaskCreated"), object: newTask)
         } catch {
             print("Error creating task: \(error)")
         }
