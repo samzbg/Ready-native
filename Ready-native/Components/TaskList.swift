@@ -25,7 +25,7 @@ struct TaskList: View {
                                 task: task,
                                 isActive: viewModel.activeTaskIndex == index,
                                 onToggle: { 
-                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
                                         viewModel.toggleTaskStatus(task)
                                     }
                                 },
@@ -102,12 +102,6 @@ struct TaskList: View {
     }
 }
 
-struct TextWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
 
 struct TextEditorHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 20
@@ -124,7 +118,6 @@ struct TaskRowView: View {
     let onRestoreFocus: () -> Void
     @Bindable var viewModel: TaskListViewModel
     @State private var isHovered = false
-    @State private var textWidth: CGFloat = 0
     @State private var textEditorHeight: CGFloat = 20
     @FocusState private var isTextFieldFocused: Bool
     
@@ -151,10 +144,10 @@ struct TaskRowView: View {
                         Text(task.title == "New task" ? "New task" : task.title)
                             .font(.system(size: 13))
                             .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                             .multilineTextAlignment(.leading)
                             .allowsHitTesting(false)
-                            .offset(x: -1)
+                            .offset(x: 3.5)
                             .opacity(viewModel.isEditingTitle && isActive ? 0 : 1)
                             .frame(height: viewModel.isEditingTitle && isActive ? 0 : nil)
                             .clipped()
@@ -192,7 +185,6 @@ struct TaskRowView: View {
                         .foregroundColor(task.title == "New task" ? .secondary : (task.status == .completed ? .secondary : Color(red: 74/255, green: 73/255, blue: 71/255)))
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.horizontal, -4)
                         .padding(.top, 0)
                         .offset(x: 3.5)
                         .scrollContentBackground(.hidden)
@@ -231,28 +223,7 @@ struct TaskRowView: View {
                             isTextFieldFocused = false
                         }
                     }
-                    .background(
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: TextWidthPreferenceKey.self, value: geometry.size.width)
-                        }
-                    )
                     
-                    // Animated strikethrough line for completed tasks
-                    if task.status == .completed && !viewModel.isEditingTitle {
-                        Rectangle()
-                            .fill(Color.secondary)
-                            .frame(width: textWidth, height: 1)
-                            .offset(y: 0)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity),
-                                removal: .scale(scale: 0.1, anchor: .leading).combined(with: .opacity)
-                            ))
-                            .animation(.easeInOut(duration: 0.3), value: task.status)
-                    }
-                }
-                .onPreferenceChange(TextWidthPreferenceKey.self) { width in
-                    textWidth = width
                 }
                 
                 Spacer()
@@ -327,6 +298,7 @@ struct CustomTextEditor: View {
     var body: some View {
         TextField("", text: $text, axis: .vertical)
             .focused($isFocused)
+            .lineLimit(nil)
             .onSubmit {
                 print("🔍 CustomTextEditor onSubmit called!")
                 onReturn()
