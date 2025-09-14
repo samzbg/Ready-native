@@ -230,7 +230,9 @@ struct RightPanelView: View {
         .background(Color.white)
         .onChange(of: rightPanel.currentDate) { oldValue, newValue in
             // Reload data when currentDate changes (e.g., from keyboard navigation)
-            rightPanel.loadCurrentDays()
+            DispatchQueue.main.async {
+                rightPanel.loadCurrentDays()
+            }
         }
     }
 }
