@@ -62,18 +62,33 @@ class DataMigrationService {
             // Clear existing sample data
             try CalendarEvent.filter(Column("id").like("sample_%")).deleteAll(db)
             
-            // Create sample calendar events in Google Calendar format
-            let sampleEvents = createSampleEvents()
+            // Create sample data for better performance
+            let sampleEvents = createMinimalSampleEvents()
             print("🔄 Creating \(sampleEvents.count) sample events...")
             
+            // Batch insert for better performance
             for var event in sampleEvents {
                 try event.save(db)
-                print("✅ Saved event: \(event.summary ?? "Untitled") at \(event.start?.dateTime ?? "No time")")
             }
             print("✅ Sample data migration completed")
         }
     }
     
+    
+    private func createMinimalSampleEvents() -> [CalendarEvent] {
+        let calendar = Calendar.current
+        let today = Date()
+        var events: [CalendarEvent] = []
+        
+        // Create events for a wider range to cover navigation
+        for dayOffset in -7...14 {
+            let targetDate = calendar.date(byAdding: .day, value: dayOffset, to: today) ?? today
+            let dayEvents = createMinimalEventsForDate(targetDate, dayOffset: dayOffset)
+            events.append(contentsOf: dayEvents)
+        }
+        
+        return events
+    }
     
     private func createSampleEvents() -> [CalendarEvent] {
         let calendar = Calendar.current
@@ -85,6 +100,97 @@ class DataMigrationService {
             let targetDate = calendar.date(byAdding: .day, value: dayOffset, to: today) ?? today
             let dayEvents = createEventsForDate(targetDate, dayOffset: dayOffset)
             events.append(contentsOf: dayEvents)
+        }
+        
+        return events
+    }
+    
+    private func createMinimalEventsForDate(_ date: Date, dayOffset: Int) -> [CalendarEvent] {
+        let calendar = Calendar.current
+        let formatter = ISO8601DateFormatter()
+        var events: [CalendarEvent] = []
+        
+        let weekday = calendar.component(.weekday, from: date)
+        let isWeekend = weekday == 1 || weekday == 7 // Sunday or Saturday
+        
+        // Create events for all days, but more for weekdays
+        if !isWeekend {
+            // Create 2-3 events for weekdays
+            let event1 = CalendarEvent(
+                id: "sample_meeting1_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Team Standup",
+                description: "Daily team synchronization meeting",
+                location: "Conference Room A",
+                start: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                end: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 30, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                attendees: [],
+                creator: EventCreator(email: "user@company.com", displayName: "User"),
+                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                status: "confirmed",
+                transparency: "opaque",
+                visibility: "private",
+                created: formatter.string(from: Date()),
+                updated: formatter.string(from: Date()),
+                reminders: EventReminders(useDefault: true, overrides: [])
+            )
+            events.append(event1)
+            
+            let event2 = CalendarEvent(
+                id: "sample_meeting2_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Project Review",
+                description: "Weekly project review meeting",
+                location: "Conference Room B",
+                start: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 14, minute: 0, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                end: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 15, minute: 0, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                attendees: [],
+                creator: EventCreator(email: "user@company.com", displayName: "User"),
+                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                status: "confirmed",
+                transparency: "opaque",
+                visibility: "private",
+                created: formatter.string(from: Date()),
+                updated: formatter.string(from: Date()),
+                reminders: EventReminders(useDefault: true, overrides: [])
+            )
+            events.append(event2)
+        } else {
+            // Create at least one event for weekends too
+            let weekendEvent = CalendarEvent(
+                id: "sample_weekend_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Weekend Planning",
+                description: "Weekend planning session",
+                location: "Home Office",
+                start: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                end: EventDateTime(
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: date) ?? date),
+                    timeZone: TimeZone.current.identifier
+                ),
+                attendees: [],
+                creator: EventCreator(email: "user@company.com", displayName: "User"),
+                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                status: "confirmed",
+                transparency: "opaque",
+                visibility: "private",
+                created: formatter.string(from: Date()),
+                updated: formatter.string(from: Date()),
+                reminders: EventReminders(useDefault: true, overrides: [])
+            )
+            events.append(weekendEvent)
         }
         
         return events

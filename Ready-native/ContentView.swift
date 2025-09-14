@@ -27,7 +27,7 @@ class FocusManager: ObservableObject {
 }
 
 struct ContentView: View {
-    @State private var rightPanel = RightPanel()
+    @StateObject private var rightPanel = RightPanel()
     @State private var middlePanel = MiddlePanel()
     @StateObject private var focusManager = FocusManager.shared
     @FocusState private var isContentViewFocused: Bool
@@ -61,6 +61,7 @@ struct ContentView: View {
             isContentViewFocused = true
         }
         .onChange(of: middlePanel.getTaskListViewModel().isEditingTitle) { _, isEditing in
+            // Direct state update without async dispatch for better performance
             if isEditing {
                 focusManager.enterEditMode()
             } else {
@@ -71,7 +72,7 @@ struct ContentView: View {
             // Check if task is in edit mode - if so, don't handle arrow keys
             let taskListViewModel = middlePanel.getTaskListViewModel()
             if !taskListViewModel.isEditingTitle {
-                // Handle calendar navigation
+                // Handle calendar navigation with explicit state update
                 rightPanel.previousDays()
                 return .handled
             }
@@ -81,22 +82,16 @@ struct ContentView: View {
             // Check if task is in edit mode - if so, don't handle arrow keys
             let taskListViewModel = middlePanel.getTaskListViewModel()
             if !taskListViewModel.isEditingTitle {
-                // Handle calendar navigation
+                // Handle calendar navigation with explicit state update
                 rightPanel.nextDays()
                 return .handled
             }
             return .ignored
         }
         .onKeyPress { keyPress in
-            print("🔍 Key pressed: \(keyPress.key)")
-            
             if keyPress.key == KeyEquivalent("\u{7F}") {
-                print("🔍 Delete/Backspace key pressed in ContentView")
                 let taskListViewModel = middlePanel.getTaskListViewModel()
-                print("🔍 isEditingTitle: \(taskListViewModel.isEditingTitle)")
-                print("🔍 activeTask: \(taskListViewModel.activeTask?.title ?? "nil")")
                 if !taskListViewModel.isEditingTitle && taskListViewModel.activeTask != nil {
-                    print("🔍 Archiving active task from ContentView...")
                     taskListViewModel.archiveActiveTask()
                     return .handled
                 }

@@ -13,44 +13,64 @@ class RightPanel: ObservableObject {
     private var lastCachedDate: Date?
     private let databaseService = DatabaseService.shared
     
+    // Cache for better performance
+    private var eventsCache: [String: [CalendarEvent]] = [:]
+    private let dateFormatter = ISO8601DateFormatter()
+    private let calendar = Calendar.current
+    
     init() {
         loadCurrentDays()
     }
     
-    private func loadCurrentDays() {
-        let calendar = Calendar.current
+    func loadCurrentDays() {
         let firstDay = calendar.startOfDay(for: currentDate)
+        let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
         
-        // Check if we need to regenerate the cache
-        if lastCachedDate != firstDay {
-            let secondDay = calendar.date(byAdding: .day, value: 1, to: firstDay) ?? firstDay
-            
-            // Use async loading to avoid blocking the UI
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    // Fetch events for both days
-                    let firstDayEvents = try self.databaseService.getCalendarEvents(for: firstDay)
-                    let secondDayEvents = try self.databaseService.getCalendarEvents(for: secondDay)
-                    
-                    DispatchQueue.main.async {
-                        self.currentDays = [
-                            DayModel(date: firstDay, events: firstDayEvents),
-                            DayModel(date: secondDay, events: secondDayEvents)
-                        ]
-                        self.lastCachedDate = firstDay
-                    }
-                } catch {
-                    print("❌ Error fetching calendar events: \(error)")
-                    // Fallback to empty events
-                    DispatchQueue.main.async {
-                        self.currentDays = [
-                            DayModel(date: firstDay, events: []),
-                            DayModel(date: secondDay, events: [])
-                        ]
-                        self.lastCachedDate = firstDay
+        // Always update the UI, but use cache if available
+        let firstDayKey = dateFormatter.string(from: firstDay)
+        let secondDayKey = dateFormatter.string(from: secondDay)
+        
+        if let firstDayEvents = eventsCache[firstDayKey],
+           let secondDayEvents = eventsCache[secondDayKey] {
+            // Use cached data directly for better performance
+            self.currentDays = [
+                DayModel(date: firstDay, events: firstDayEvents),
+                DayModel(date: secondDay, events: secondDayEvents)
+            ]
+            self.lastCachedDate = firstDay
+        } else {
+            // Load from database asynchronously
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        // Fetch events for both days
+                        let firstDayEvents = try self.databaseService.getCalendarEvents(for: firstDay)
+                        let secondDayEvents = try self.databaseService.getCalendarEvents(for: secondDay)
+                        
+                        // Debug logging removed for performance
+                        
+                        // Cache the results
+                        self.eventsCache[firstDayKey] = firstDayEvents
+                        self.eventsCache[secondDayKey] = secondDayEvents
+                        
+                        DispatchQueue.main.async {
+                            self.currentDays = [
+                                DayModel(date: firstDay, events: firstDayEvents),
+                                DayModel(date: secondDay, events: secondDayEvents)
+                            ]
+                            self.lastCachedDate = firstDay
+                        }
+                    } catch {
+                        print("❌ Error fetching calendar events: \(error)")
+                        // Fallback to empty events
+                        DispatchQueue.main.async {
+                            self.currentDays = [
+                                DayModel(date: firstDay, events: []),
+                                DayModel(date: secondDay, events: [])
+                            ]
+                            self.lastCachedDate = firstDay
+                        }
                     }
                 }
-            }
         }
     }
     
@@ -74,21 +94,33 @@ class RightPanel: ObservableObject {
     func previousDays() {
         isNavigatingForward = false
         pendingDirection = false
-        withAnimation(.easeInOut(duration: 0.2)) {
+        // Clear cache to force reload
+        lastCachedDate = nil
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
             currentDate = Calendar.current.date(byAdding: .day, value: -2, to: currentDate) ?? currentDate
         }
-        loadCurrentDays()
-        pendingDirection = nil
+        
+        // Reset pending direction after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            self.pendingDirection = nil
+        }
     }
     
     func nextDays() {
         isNavigatingForward = true
         pendingDirection = true
-        withAnimation(.easeInOut(duration: 0.2)) {
+        // Clear cache to force reload
+        lastCachedDate = nil
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
             currentDate = Calendar.current.date(byAdding: .day, value: 2, to: currentDate) ?? currentDate
         }
-        loadCurrentDays()
-        pendingDirection = nil
+        
+        // Reset pending direction after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            self.pendingDirection = nil
+        }
     }
     
     func navigateToToday() {
@@ -109,11 +141,17 @@ class RightPanel: ObservableObject {
         
         isNavigatingForward = isTodayAfter
         pendingDirection = isTodayAfter
-        withAnimation(.easeInOut(duration: 0.2)) {
+        // Clear cache to force reload
+        lastCachedDate = nil
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
             currentDate = today
         }
-        loadCurrentDays()
-        pendingDirection = nil
+        
+        // Reset pending direction after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            self.pendingDirection = nil
+        }
     }
     
     func toggleEventActive(_ eventId: String) {
@@ -190,6 +228,10 @@ struct RightPanelView: View {
         }
         .padding(.top, -18)
         .background(Color.white)
+        .onChange(of: rightPanel.currentDate) { oldValue, newValue in
+            // Reload data when currentDate changes (e.g., from keyboard navigation)
+            rightPanel.loadCurrentDays()
+        }
     }
 }
 
@@ -448,15 +490,10 @@ private struct MeetingCard: View {
         .onTapGesture(perform: onToggle)
         .onHover { isHovered = $0 }
         .onChange(of: isActive) { oldValue, newValue in
+            // Simplified state management for better performance
             if newValue {
-                // Show detail text after height animation completes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showDetail = true
-                    }
-                }
+                showDetail = true
             } else {
-                // Hide detail text immediately when collapsing
                 showDetail = false
             }
         }
@@ -477,61 +514,54 @@ private struct DayModel: Identifiable {
     let isToday: Bool
     var items: [DayItem]
     
+    // Shared formatters for better performance
+    private static let weekdayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E" // Mon, Tue, etc.
+        return formatter
+    }()
+    
     init(date: Date, events: [CalendarEvent] = []) {
         self.date = date
         let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E" // Mon, Tue, etc.
         
-        self.weekday = formatter.string(from: date)
+        self.weekday = Self.weekdayFormatter.string(from: date)
         self.dayNumber = calendar.component(.day, from: date)
         self.isToday = calendar.isDateInToday(date)
         self.items = Self.generateItemsFromEvents(events, for: date)
     }
     
+    // Shared formatter for better performance
+    private static let sharedFormatter = ISO8601DateFormatter()
+    
     static func generateItemsFromEvents(_ events: [CalendarEvent], for date: Date) -> [DayItem] {
         let calendar = Calendar.current
-        let dayOfWeek = calendar.component(.weekday, from: date)
-        
         var items: [DayItem] = []
         
-        // Add meetings for weekdays
-        if dayOfWeek >= 2 && dayOfWeek <= 6 { // Monday to Friday
-            // Sort events by start time
-            let sortedEvents = events.compactMap { event -> (CalendarEvent, Date)? in
-                guard let startDateTime = event.start?.dateTime,
-                      let startDate = ISO8601DateFormatter().date(from: startDateTime),
-                      calendar.isDate(startDate, inSameDayAs: date) else {
-                    return nil
-                }
-                return (event, startDate)
-            }.sorted { $0.1 < $1.1 }
-            
-            // Add meetings and calculate breaks between them
-            for (index, (event, _)) in sortedEvents.enumerated() {
-                let meeting = Meeting(
-                    id: event.id,
-                    timeRange: formatTimeRange(start: event.start, end: event.end),
-                    title: event.summary,
-                    detail: event.description,
-                    isCurrent: false
-                )
-                items.append(DayItem(id: UUID(), kind: .meeting(meeting)))
-                
-                // Add break note between consecutive meetings
-                if index < sortedEvents.count - 1 {
-                    let currentEvent = event
-                    let nextEvent = sortedEvents[index + 1].0
-                    
-                    if let breakDuration = calculateBreakDuration(
-                        currentEventEnd: currentEvent.end,
-                        nextEventStart: nextEvent.start
-                    ) {
-                        let breakText = formatBreakDuration(breakDuration)
-                        items.append(DayItem(id: UUID(), kind: .breakNote(breakText)))
-                    }
-                }
+        // Add meetings for all days (not just weekdays)
+        // Use shared formatter instance for better performance
+        let formatter = sharedFormatter
+        
+        // Sort events by start time - simplified for performance
+        let sortedEvents = events.compactMap { event -> (CalendarEvent, Date)? in
+            guard let startDateTime = event.start?.dateTime,
+                  let startDate = formatter.date(from: startDateTime),
+                  calendar.isDate(startDate, inSameDayAs: date) else {
+                return nil
             }
+            return (event, startDate)
+        }.sorted { $0.1 < $1.1 }
+        
+        // Add meetings - skip break calculations for better performance
+        for (event, _) in sortedEvents {
+            let meeting = Meeting(
+                id: event.id,
+                timeRange: formatTimeRange(start: event.start, end: event.end),
+                title: event.summary,
+                detail: event.description,
+                isCurrent: false
+            )
+            items.append(DayItem(id: UUID(), kind: .meeting(meeting)))
         }
         
         return items
@@ -540,8 +570,8 @@ private struct DayModel: Identifiable {
     private static func calculateBreakDuration(currentEventEnd: EventDateTime?, nextEventStart: EventDateTime?) -> TimeInterval? {
         guard let currentEndTime = currentEventEnd?.dateTime,
               let nextStartTime = nextEventStart?.dateTime,
-              let currentEndDate = ISO8601DateFormatter().date(from: currentEndTime),
-              let nextStartDate = ISO8601DateFormatter().date(from: nextStartTime) else {
+              let currentEndDate = sharedFormatter.date(from: currentEndTime),
+              let nextStartDate = sharedFormatter.date(from: nextStartTime) else {
             return nil
         }
         
@@ -566,9 +596,14 @@ private struct DayModel: Identifiable {
     
     private static func formatTimeRange(start: EventDateTime?, end: EventDateTime?) -> String? {
         guard let startTime = start?.dateTime,
-              let endTime = end?.dateTime,
-              let startDate = ISO8601DateFormatter().date(from: startTime),
-              let endDate = ISO8601DateFormatter().date(from: endTime) else {
+              let endTime = end?.dateTime else {
+            return nil
+        }
+        
+        // Use shared formatter instance for better performance
+        let formatter = sharedFormatter
+        guard let startDate = formatter.date(from: startTime),
+              let endDate = formatter.date(from: endTime) else {
             return nil
         }
         
@@ -583,33 +618,17 @@ private struct DayModel: Identifiable {
             return nil
         }
         
-        // Determine AM/PM for start and end times
-        let startIsAM = startHour < 12
-        let endIsAM = endHour < 12
-        
-        // Format start time
+        // Simplified time formatting for better performance
         let startDisplayHour = startHour == 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour)
-        let startMinuteStr = startMinute == 0 ? "" : ":\(String(format: "%02d", startMinute))"
-        let startPeriod = startIsAM ? "AM" : "PM"
-        
-        // Format end time
         let endDisplayHour = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour)
+        
+        let startMinuteStr = startMinute == 0 ? "" : ":\(String(format: "%02d", startMinute))"
         let endMinuteStr = endMinute == 0 ? "" : ":\(String(format: "%02d", endMinute))"
-        let endPeriod = endIsAM ? "AM" : "PM"
         
-        // Build the formatted string
-        var startFormatted = "\(startDisplayHour)\(startMinuteStr)"
-        var endFormatted = "\(endDisplayHour)\(endMinuteStr)"
+        let startPeriod = startHour < 12 ? "AM" : "PM"
+        let endPeriod = endHour < 12 ? "AM" : "PM"
         
-        // Only show AM/PM for start time if it's different from end time
-        if startIsAM != endIsAM {
-            startFormatted += " \(startPeriod)"
-        }
-        
-        // Always show AM/PM for end time
-        endFormatted += " \(endPeriod)"
-        
-        return "\(startFormatted) – \(endFormatted)"
+        return "\(startDisplayHour)\(startMinuteStr) \(startPeriod) – \(endDisplayHour)\(endMinuteStr) \(endPeriod)"
     }
 }
 

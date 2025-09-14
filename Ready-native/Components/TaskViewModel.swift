@@ -267,6 +267,7 @@ class TaskListViewModel {
     
     private func setupNotifications() {
         NotificationCenter.default.publisher(for: NSNotification.Name("TaskCreated"))
+            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
             .sink { [weak self] notification in
                 // Only reload if a new task was created
                 if let newTask = notification.object as? Task {
