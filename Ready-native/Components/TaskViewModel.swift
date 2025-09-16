@@ -19,6 +19,11 @@ class TaskListViewModel {
     var error: Error?
     var activeTaskIndex: Int? = nil
     
+    // Multi-select state
+    var selectedTaskIndices: Set<Int> = []
+    var isMultiSelectMode = false
+    var lastSelectedIndex: Int? = nil
+    
     // Editing state
     var isEditingTitle = false
     var editingTitleText = ""
@@ -56,6 +61,108 @@ class TaskListViewModel {
         if let index = filteredTasks.firstIndex(where: { $0.id == task.id }) {
             selectTask(at: index)
         }
+    }
+    
+    func selectTaskWithShift(at index: Int) {
+        guard index >= 0 && index < filteredTasks.count else { return }
+        
+        print("🔍 Shift-click at index: \(index)")
+        print("🔍 Current multi-select mode: \(isMultiSelectMode)")
+        print("🔍 Current selected indices: \(selectedTaskIndices)")
+        print("🔍 Current active task index: \(activeTaskIndex ?? -1)")
+        
+        if isMultiSelectMode {
+            // Add to selection range
+            if let lastIndex = lastSelectedIndex {
+                let startIndex = min(lastIndex, index)
+                let endIndex = max(lastIndex, index)
+                
+                print("🔍 Adding range from \(startIndex) to \(endIndex)")
+                for i in startIndex...endIndex {
+                    selectedTaskIndices.insert(i)
+                }
+            } else {
+                selectedTaskIndices.insert(index)
+            }
+        } else {
+            // Start multi-select mode with current active task and new task
+            if let currentActiveIndex = activeTaskIndex {
+                print("🔍 Starting multi-select with active task \(currentActiveIndex) and new task \(index)")
+                isMultiSelectMode = true
+                let startIndex = min(currentActiveIndex, index)
+                let endIndex = max(currentActiveIndex, index)
+                
+                selectedTaskIndices = Set()
+                for i in startIndex...endIndex {
+                    selectedTaskIndices.insert(i)
+                }
+                lastSelectedIndex = index
+            } else {
+                // No active task, just select this one
+                print("🔍 Starting multi-select with single task")
+                isMultiSelectMode = true
+                selectedTaskIndices = [index]
+                lastSelectedIndex = index
+            }
+        }
+        
+        activeTaskIndex = index
+        print("🔍 Final selected indices: \(selectedTaskIndices)")
+    }
+    
+    func selectTaskNormal(at index: Int) {
+        guard index >= 0 && index < filteredTasks.count else { return }
+        
+        print("🔍 Normal click at index: \(index)")
+        
+        // Clear multi-select mode
+        isMultiSelectMode = false
+        selectedTaskIndices = []
+        lastSelectedIndex = nil
+        
+        // Set as active task
+        activeTaskIndex = index
+    }
+    
+    func isTaskSelected(at index: Int) -> Bool {
+        return selectedTaskIndices.contains(index)
+    }
+    
+    func isTaskInSelectionRange(at index: Int) -> Bool {
+        guard isMultiSelectMode, !selectedTaskIndices.isEmpty else { return false }
+        
+        // Check if the task is actually in the selected indices set
+        let result = selectedTaskIndices.contains(index)
+        
+        if result {
+            print("🔍 Task \(index) is in selected indices")
+        }
+        
+        return result
+    }
+    
+    func isFirstSelectedTask(at index: Int) -> Bool {
+        guard isMultiSelectMode, !selectedTaskIndices.isEmpty else { return false }
+        return selectedTaskIndices.contains(index) && index == selectedTaskIndices.min()
+    }
+    
+    func isLastSelectedTask(at index: Int) -> Bool {
+        guard isMultiSelectMode, !selectedTaskIndices.isEmpty else { return false }
+        return selectedTaskIndices.contains(index) && index == selectedTaskIndices.max()
+    }
+    
+    func isMiddleSelectedTask(at index: Int) -> Bool {
+        guard isMultiSelectMode, !selectedTaskIndices.isEmpty else { return false }
+        guard selectedTaskIndices.contains(index) else { return false }
+        let minIndex = selectedTaskIndices.min() ?? 0
+        let maxIndex = selectedTaskIndices.max() ?? 0
+        return index > minIndex && index < maxIndex
+    }
+    
+    func clearMultiSelect() {
+        isMultiSelectMode = false
+        selectedTaskIndices = []
+        lastSelectedIndex = nil
     }
     
     func moveSelectionUp() {
@@ -203,7 +310,8 @@ class TaskListViewModel {
         if isEditingTitle {
             cancelTitleEdit()
         } else {
-            // Clear active task selection when not in edit mode
+            // Clear multi-select mode and active task selection when not in edit mode
+            clearMultiSelect()
             clearActiveTask()
         }
     }

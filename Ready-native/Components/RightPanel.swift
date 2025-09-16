@@ -554,8 +554,8 @@ private struct DayModel: Identifiable {
             return (event, startDate)
         }.sorted { $0.1 < $1.1 }
         
-        // Add meetings - skip break calculations for better performance
-        for (event, _) in sortedEvents {
+        // Add meetings and breaks between them
+        for (index, (event, _)) in sortedEvents.enumerated() {
             let meeting = Meeting(
                 id: event.id,
                 timeRange: formatTimeRange(start: event.start, end: event.end),
@@ -564,6 +564,15 @@ private struct DayModel: Identifiable {
                 isCurrent: false
             )
             items.append(DayItem(id: UUID(), kind: .meeting(meeting)))
+            
+            // Add break note between consecutive meetings
+            if index < sortedEvents.count - 1 {
+                let nextEvent = sortedEvents[index + 1].0
+                if let breakDuration = calculateBreakDuration(currentEventEnd: event.end, nextEventStart: nextEvent.start) {
+                    let breakText = formatBreakDuration(breakDuration)
+                    items.append(DayItem(id: UUID(), kind: .breakNote(breakText)))
+                }
+            }
         }
         
         return items

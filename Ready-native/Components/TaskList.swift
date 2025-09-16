@@ -21,26 +21,42 @@ struct TaskList: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(viewModel.filteredTasks.enumerated()), id: \.element.id) { index, task in
+                            let isSelected = viewModel.isTaskSelected(at: index)
+                            let isInRange = viewModel.isTaskInSelectionRange(at: index)
+                            let isFirstSelected = viewModel.isFirstSelectedTask(at: index)
+                            let isLastSelected = viewModel.isLastSelectedTask(at: index)
+                            let isMiddleSelected = viewModel.isMiddleSelectedTask(at: index)
+                            
                             TaskRowView(
                                 task: task,
                                 isActive: viewModel.activeTaskIndex == index,
+                                isSelected: isSelected,
+                                isInSelectionRange: isInRange,
+                                isFirstSelected: isFirstSelected,
+                                isLastSelected: isLastSelected,
+                                isMiddleSelected: isMiddleSelected,
                                 onToggle: { 
                                     withAnimation(.easeInOut(duration: 0.15)) {
                                         viewModel.toggleTaskStatus(task)
                                     }
                                 },
                                 onSelect: { 
-                                    viewModel.selectTask(at: index)
+                                    viewModel.selectTaskNormal(at: index)
+                                },
+                                onSelectWithShift: {
+                                    viewModel.selectTaskWithShift(at: index)
                                 },
                                 onRestoreFocus: {
                                     isTaskListFocused = true
                                 },
                                 viewModel: viewModel
                             )
-                            .id("\(task.id)-\(viewModel.activeTaskIndex == index)")
+                            .id("\(task.id)-\(viewModel.activeTaskIndex == index)-\(isSelected)-\(isInRange)")
+                            .onAppear {
+                                print("🔍 Task \(index) - isSelected: \(isSelected), isInRange: \(isInRange), isActive: \(viewModel.activeTaskIndex == index)")
+                            }
                         }
                     }
-                    .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle)
                     .padding(.horizontal, 24)
                 }
             }
@@ -60,6 +76,8 @@ struct TaskList: View {
             if viewModel.isEditingTitle {
                 viewModel.cancelTitleEdit()
             }
+            // Clear multi-select mode when clicking outside of tasks
+            // Note: This will be handled by individual task taps, not here
             isTaskListFocused = true
         }
         .onKeyPress(.upArrow) {
@@ -118,13 +136,59 @@ struct TextEditorHeightPreferenceKey: PreferenceKey {
 struct TaskRowView: View {
     let task: Task
     let isActive: Bool
+    let isSelected: Bool
+    let isInSelectionRange: Bool
+    let isFirstSelected: Bool
+    let isLastSelected: Bool
+    let isMiddleSelected: Bool
     let onToggle: () -> Void
     let onSelect: () -> Void
+    let onSelectWithShift: () -> Void
     let onRestoreFocus: () -> Void
     @Bindable var viewModel: TaskListViewModel
     @State private var isHovered = false
     @State private var textEditorHeight: CGFloat = 20
     @FocusState private var isTextFieldFocused: Bool
+    
+    private var backgroundShape: some Shape {
+        if isFirstSelected {
+            // Only round top corners (topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0)
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 6,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 6,
+                style: .continuous
+            )
+        } else if isLastSelected {
+            // Only round bottom corners (topLeft: 0, topRight: 0, bottomLeft: 6, bottomRight: 6)
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: 6,
+                bottomTrailingRadius: 6,
+                topTrailingRadius: 0,
+                style: .continuous
+            )
+        } else if isMiddleSelected {
+            // Sharp corners
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 0,
+                style: .continuous
+            )
+        } else {
+            // Default rounded corners
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 6,
+                bottomLeadingRadius: 6,
+                bottomTrailingRadius: 6,
+                topTrailingRadius: 6,
+                style: .continuous
+            )
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -247,23 +311,41 @@ struct TaskRowView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
         .background(
-            viewModel.isEditingTitle && isActive ? Color.white : (isActive && !viewModel.isEditingTitle ? Color(red: 233/255, green: 236/255, blue: 254/255) : Color.clear)
+            Group {
+                if viewModel.isEditingTitle && isActive {
+                    Color.white
+                } else if isSelected || isInSelectionRange {
+                    backgroundShape
+                        .fill(Color(red: 233/255, green: 236/255, blue: 254/255))
+                } else if isActive && !viewModel.isEditingTitle {
+                    backgroundShape
+                        .fill(Color(red: 233/255, green: 236/255, blue: 254/255))
+                } else {
+                    Color.clear
+                }
+            }
         )
         .animation(.easeInOut(duration: 0.15), value: viewModel.isEditingTitle && isActive)
-        .cornerRadius(6)
+        .animation(.easeInOut(duration: 0.15), value: isSelected || isInSelectionRange)
         .onHover { hovering in
             isHovered = hovering
         }
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    // If we're currently editing another task, cancel edit mode first
-                    if viewModel.isEditingTitle && !isActive {
-                        viewModel.cancelTitleEdit()
-                    }
-                    onSelect()
+        .onTapGesture {
+            // Check if shift key is pressed
+            if NSEvent.modifierFlags.contains(.shift) {
+                // If we're currently editing another task, cancel edit mode first
+                if viewModel.isEditingTitle && !isActive {
+                    viewModel.cancelTitleEdit()
                 }
-        )
+                onSelectWithShift()
+            } else {
+                // If we're currently editing another task, cancel edit mode first
+                if viewModel.isEditingTitle && !isActive {
+                    viewModel.cancelTitleEdit()
+                }
+                onSelect()
+            }
+        }
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {

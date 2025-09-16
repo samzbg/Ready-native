@@ -20,7 +20,7 @@ class AppInitializationService {
             // Migrate database schema
             let migrationService = DataMigrationService()
             try migrationService.migrateTasksTable()
-            try migrationService.migrateSampleData()
+            try migrationService.refreshSampleData() // Always refresh with latest events
             
             print("App initialization completed successfully")
         } catch {

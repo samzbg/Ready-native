@@ -206,7 +206,7 @@ struct LeftPanel: View {
                     .padding(8)
                     .contentShape(Rectangle())
                 }
-                .padding(.top, -25)
+                .padding(.top, -24)
                 Spacer()
             },
             alignment: .topTrailing

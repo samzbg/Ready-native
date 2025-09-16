@@ -74,6 +74,11 @@ class DataMigrationService {
         }
     }
     
+    func refreshSampleData() throws {
+        print("🔄 Refreshing sample data with updated events...")
+        try migrateSampleData()
+    }
+    
     
     private func createMinimalSampleEvents() -> [CalendarEvent] {
         let calendar = Calendar.current
@@ -118,34 +123,41 @@ class DataMigrationService {
             // Create 2-3 events for weekdays
             let event1 = CalendarEvent(
                 id: "sample_meeting1_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Team Standup",
-                description: "Daily team synchronization meeting",
-                location: "Conference Room A",
+                summary: "Board Meeting - Q4 Review",
+                description: "Quarterly board meeting to review Q4 performance, discuss strategic initiatives for next quarter, and address investor concerns. Sarah Chen (Sequoia Capital) will be joining remotely from Singapore. Previous meeting notes: Need to address customer churn in enterprise segment, discuss Series B timeline, and review new product roadmap. Follow-up from last month's discussion about international expansion into APAC markets.",
+                location: "Boardroom - 15th Floor",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 30, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 10, minute: 30, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
-                attendees: [],
-                creator: EventCreator(email: "user@company.com", displayName: "User"),
-                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                attendees: [
+                    EventAttendee(email: "sarah.chen@sequoiacap.com", displayName: "Sarah Chen (Sequoia)", responseStatus: "accepted"),
+                    EventAttendee(email: "mike.rodriguez@accel.com", displayName: "Mike Rodriguez (Accel)", responseStatus: "accepted"),
+                    EventAttendee(email: "lisa.wang@company.com", displayName: "Lisa Wang (CFO)", responseStatus: "accepted")
+                ],
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [])
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 15),
+                    ReminderOverride(method: "email", minutes: 60)
+                ])
             )
             events.append(event1)
             
             let event2 = CalendarEvent(
                 id: "sample_meeting2_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Project Review",
-                description: "Weekly project review meeting",
-                location: "Conference Room B",
+                summary: "Investor Call - Series B Prep",
+                description: "Strategic call with potential Series B lead investor. David Kim from Andreessen Horowitz reached out through mutual connection (former colleague from Google). Company has grown 300% YoY, now at $2M ARR. Need to discuss: 1) Market expansion strategy, 2) Technical roadmap for AI features, 3) Competitive positioning vs. incumbents, 4) Team scaling plans. Previous email thread shows strong interest in our ML capabilities and enterprise traction. Prepare demo of new predictive analytics feature.",
+                location: "Zoom - Meeting Room Alpha",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 14, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
@@ -154,41 +166,62 @@ class DataMigrationService {
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 15, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
-                attendees: [],
-                creator: EventCreator(email: "user@company.com", displayName: "User"),
-                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                attendees: [
+                    EventAttendee(email: "david.kim@a16z.com", displayName: "David Kim (a16z)", responseStatus: "accepted"),
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen", responseStatus: "accepted"),
+                    EventAttendee(email: "cto@company.com", displayName: "Maria Santos (CTO)", responseStatus: "accepted")
+                ],
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [])
+                conferenceData: ConferenceData(
+                    createRequest: CreateRequest(requestId: UUID().uuidString, conferenceSolutionKey: ConferenceSolutionKey(type: "hangoutsMeet")),
+                    entryPoints: [EntryPoint(entryPointType: "video", uri: "https://zoom.us/j/123456789", label: "Zoom Meeting")],
+                    conferenceSolution: ConferenceSolution(
+                        key: ConferenceSolutionKey(type: "hangoutsMeet"),
+                        name: "Zoom",
+                        iconUri: "https://zoom.us/favicon.ico"
+                    )
+                ),
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 10),
+                    ReminderOverride(method: "email", minutes: 30)
+                ])
             )
             events.append(event2)
         } else {
             // Create at least one event for weekends too
             let weekendEvent = CalendarEvent(
                 id: "sample_weekend_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Weekend Planning",
-                description: "Weekend planning session",
+                summary: "Strategic Planning Session",
+                description: "Weekend strategic planning session to review company vision and prepare for upcoming investor meetings. Need to finalize pitch deck for Series B, review competitive analysis, and prepare talking points for potential acquirers who have shown interest. Previous discussions with Microsoft and Salesforce about potential partnerships or acquisition. Review financial projections and growth metrics for Q1 2024.",
                 location: "Home Office",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
-                attendees: [],
-                creator: EventCreator(email: "user@company.com", displayName: "User"),
-                organizer: EventOrganizer(email: "user@company.com", displayName: "User"),
+                attendees: [
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen", responseStatus: "accepted"),
+                    EventAttendee(email: "cofounder@company.com", displayName: "Jordan Kim (Co-founder)", responseStatus: "accepted")
+                ],
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [])
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 15)
+                ])
             )
             events.append(weekendEvent)
         }
@@ -205,61 +238,65 @@ class DataMigrationService {
         let weekday = calendar.component(.weekday, from: date)
         let isWeekend = weekday == 1 || weekday == 7 // Sunday or Saturday
         
-        // Daily standup (weekdays only)
+        // Executive team sync (weekdays only)
         if !isWeekend {
-            let standupEvent = CalendarEvent(
-                id: "sample_standup_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Team Standup",
-                description: "Daily team synchronization meeting to discuss progress and blockers.",
-                location: "Conference Room A",
+            let execSyncEvent = CalendarEvent(
+                id: "sample_exec_sync_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Executive Team Sync",
+                description: "Daily executive team synchronization to review KPIs, discuss strategic decisions, and address urgent matters. Today's agenda: 1) Review yesterday's customer feedback from enterprise clients, 2) Discuss hiring freeze implications for Q1 roadmap, 3) Update on partnership negotiations with Microsoft Azure, 4) Address PR crisis management for competitor's negative press about our industry. Previous meeting notes: Need to accelerate Series B timeline due to market conditions, consider strategic pivot to enterprise focus.",
+                location: "Executive Conference Room",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 30, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 9, minute: 45, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "john.doe@company.com", displayName: "John Doe", responseStatus: "accepted"),
-                    EventAttendee(email: "jane.smith@company.com", displayName: "Jane Smith", responseStatus: "accepted"),
-                    EventAttendee(email: "bob.wilson@company.com", displayName: "Bob Wilson", responseStatus: "tentative")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cto@company.com", displayName: "Maria Santos (CTO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cfo@company.com", displayName: "Lisa Wang (CFO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cmo@company.com", displayName: "David Park (CMO)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "john.doe@company.com", displayName: "John Doe"),
-                organizer: EventOrganizer(email: "john.doe@company.com", displayName: "John Doe"),
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [
-                    ReminderOverride(method: "popup", minutes: 10)
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 5),
+                    ReminderOverride(method: "email", minutes: 15)
                 ])
             )
-            events.append(standupEvent)
+            events.append(execSyncEvent)
         }
         
-        // Weekly client meeting (Tuesdays)
+        // Enterprise customer meeting (Tuesdays)
         if weekday == 3 { // Tuesday
-            let clientEvent = CalendarEvent(
-                id: "sample_client_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Client Meeting",
-                description: "Weekly client check-in to review project status and address any concerns.",
-                location: "Client Office - 123 Business St",
+            let enterpriseEvent = CalendarEvent(
+                id: "sample_enterprise_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Enterprise Customer - Fortune 500 Deal",
+                description: "Strategic meeting with Fortune 500 enterprise customer (Johnson & Johnson) to discuss $2M annual contract renewal and expansion opportunities. Introduced through LinkedIn connection with their CTO who attended our product demo at TechCrunch Disrupt. Previous meetings: Initial pilot successful, saved them $500K annually, now discussing enterprise-wide rollout. Key stakeholders: Sarah Mitchell (CTO), Robert Chen (VP Engineering), Lisa Thompson (Procurement). Prepare: ROI analysis, security compliance documentation, integration roadmap.",
+                location: "J&J Corporate HQ - New Brunswick, NJ",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 12, minute: 30, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "john.doe@company.com", displayName: "John Doe", responseStatus: "accepted"),
-                    EventAttendee(email: "client@clientcompany.com", displayName: "Client Contact", responseStatus: "accepted")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "sarah.mitchell@jnj.com", displayName: "Sarah Mitchell (CTO)", responseStatus: "accepted"),
+                    EventAttendee(email: "robert.chen@jnj.com", displayName: "Robert Chen (VP Engineering)", responseStatus: "accepted"),
+                    EventAttendee(email: "lisa.thompson@jnj.com", displayName: "Lisa Thompson (Procurement)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "john.doe@company.com", displayName: "John Doe"),
-                organizer: EventOrganizer(email: "john.doe@company.com", displayName: "John Doe"),
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
@@ -267,28 +304,28 @@ class DataMigrationService {
                 updated: formatter.string(from: Date()),
                 conferenceData: ConferenceData(
                     createRequest: CreateRequest(requestId: UUID().uuidString, conferenceSolutionKey: ConferenceSolutionKey(type: "hangoutsMeet")),
-                    entryPoints: [EntryPoint(entryPointType: "video", uri: "https://meet.google.com/abc-defg-hij", label: "meet.google.com/abc-defg-hij")],
+                    entryPoints: [EntryPoint(entryPointType: "video", uri: "https://zoom.us/j/987654321", label: "Zoom Meeting")],
                     conferenceSolution: ConferenceSolution(
                         key: ConferenceSolutionKey(type: "hangoutsMeet"),
-                        name: "Google Meet",
-                        iconUri: "https://fonts.gstatic.com/s/i/productlogos/meet_2020q4/v1/web-96dp/logo_meet_2020q4_color_2x_web_96dp.png"
+                        name: "Zoom",
+                        iconUri: "https://zoom.us/favicon.ico"
                     )
                 ),
                 reminders: EventReminders(useDefault: false, overrides: [
-                    ReminderOverride(method: "popup", minutes: 15),
+                    ReminderOverride(method: "popup", minutes: 30),
                     ReminderOverride(method: "email", minutes: 120)
                 ])
             )
-            events.append(clientEvent)
+            events.append(enterpriseEvent)
         }
         
         // All Hands Meeting (Fridays)
         if weekday == 6 { // Friday
             let allHandsEvent = CalendarEvent(
                 id: "sample_allhands_\(dayOffset)_\(UUID().uuidString)",
-                summary: "All Hands Meeting",
-                description: "Weekly company-wide meeting to discuss updates, achievements, and upcoming initiatives.",
-                location: "Main Conference Room",
+                summary: "All Hands - Company Update",
+                description: "Weekly company-wide meeting to share updates, celebrate wins, and align on strategic priorities. Today's agenda: 1) Announce Series B funding progress and timeline, 2) Celebrate 300% YoY growth milestone, 3) Introduce new VP of Sales (hiring announcement), 4) Address market conditions and company resilience, 5) Q&A session. Previous meeting notes: Team morale high despite market uncertainty, need to maintain transparency about fundraising process. Prepare talking points about competitive advantages and market opportunity.",
+                location: "Main Conference Room + Zoom",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 14, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
@@ -298,95 +335,111 @@ class DataMigrationService {
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "ceo@company.com", displayName: "CEO", responseStatus: "accepted"),
-                    EventAttendee(email: "cto@company.com", displayName: "CTO", responseStatus: "accepted")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cto@company.com", displayName: "Maria Santos (CTO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cfo@company.com", displayName: "Lisa Wang (CFO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cmo@company.com", displayName: "David Park (CMO)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "ceo@company.com", displayName: "CEO"),
-                organizer: EventOrganizer(email: "ceo@company.com", displayName: "CEO"),
+                creator: EventCreator(email: "ceo@company.com", displayName: "Alex Chen"),
+                organizer: EventOrganizer(email: "ceo@company.com", displayName: "Alex Chen"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "public",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [])
+                conferenceData: ConferenceData(
+                    createRequest: CreateRequest(requestId: UUID().uuidString, conferenceSolutionKey: ConferenceSolutionKey(type: "hangoutsMeet")),
+                    entryPoints: [EntryPoint(entryPointType: "video", uri: "https://zoom.us/j/555666777", label: "All Hands Zoom")],
+                    conferenceSolution: ConferenceSolution(
+                        key: ConferenceSolutionKey(type: "hangoutsMeet"),
+                        name: "Zoom",
+                        iconUri: "https://zoom.us/favicon.ico"
+                    )
+                ),
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 10)
+                ])
             )
             events.append(allHandsEvent)
         }
         
-        // Product Review (Mondays)
+        // Strategic Product Review (Mondays)
         if weekday == 2 { // Monday
             let productEvent = CalendarEvent(
                 id: "sample_product_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Product Review",
-                description: "Weekly product review meeting to discuss features, bugs, and roadmap updates.",
-                location: "Product Room",
+                summary: "Strategic Product Review",
+                description: "Weekly strategic product review to align product roadmap with business objectives and investor expectations. Today's focus: 1) Review AI feature development timeline for Series B demo, 2) Discuss enterprise customer feedback on current features, 3) Prioritize Q1 roadmap based on market conditions, 4) Address technical debt vs. new feature development trade-offs. Previous meeting notes: Need to accelerate AI capabilities to differentiate from competitors, enterprise customers requesting advanced analytics features. Prepare: Competitive analysis, customer feedback summary, technical feasibility assessment.",
+                location: "Product Strategy Room",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 11, minute: 30, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "product@company.com", displayName: "Product Manager", responseStatus: "accepted"),
-                    EventAttendee(email: "dev@company.com", displayName: "Dev Lead", responseStatus: "accepted"),
-                    EventAttendee(email: "design@company.com", displayName: "Design Lead", responseStatus: "accepted")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "cto@company.com", displayName: "Maria Santos (CTO)", responseStatus: "accepted"),
+                    EventAttendee(email: "product@company.com", displayName: "Sarah Kim (VP Product)", responseStatus: "accepted"),
+                    EventAttendee(email: "design@company.com", displayName: "Michael Chen (Head of Design)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "product@company.com", displayName: "Product Manager"),
-                organizer: EventOrganizer(email: "product@company.com", displayName: "Product Manager"),
+                creator: EventCreator(email: "product@company.com", displayName: "Sarah Kim"),
+                organizer: EventOrganizer(email: "product@company.com", displayName: "Sarah Kim"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
                 reminders: EventReminders(useDefault: false, overrides: [
-                    ReminderOverride(method: "popup", minutes: 30)
+                    ReminderOverride(method: "popup", minutes: 15),
+                    ReminderOverride(method: "email", minutes: 60)
                 ])
             )
             events.append(productEvent)
         }
         
-        // One-on-One meetings (Wednesdays)
+        // Board advisor meeting (Wednesdays)
         if weekday == 4 { // Wednesday
-            let oneOnOneEvent = CalendarEvent(
-                id: "sample_1on1_\(dayOffset)_\(UUID().uuidString)",
-                summary: "1:1 with Manager",
-                description: "Weekly one-on-one meeting with direct manager to discuss progress and career development.",
-                location: "Manager's Office",
+            let advisorEvent = CalendarEvent(
+                id: "sample_advisor_\(dayOffset)_\(UUID().uuidString)",
+                summary: "Board Advisor - Strategic Guidance",
+                description: "Monthly strategic guidance session with board advisor and former Fortune 500 CEO. Dr. Jennifer Walsh (former CEO of IBM Cloud) provides strategic counsel on scaling operations, market expansion, and leadership development. Introduced through Y Combinator network. Previous discussions: Focus on enterprise sales strategy, international expansion timeline, and building scalable operations. Today's agenda: 1) Review Series B pitch deck and investor feedback, 2) Discuss hiring strategy for key leadership roles, 3) Address competitive threats and market positioning, 4) Plan for potential acquisition discussions. Prepare: Updated financial projections, competitive analysis, org chart.",
+                location: "Advisor's Office - Palo Alto",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 15, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 end: EventDateTime(
-                    dateTime: formatter.string(from: calendar.date(bySettingHour: 16, minute: 0, second: 0, of: date) ?? date),
+                    dateTime: formatter.string(from: calendar.date(bySettingHour: 16, minute: 30, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "john.doe@company.com", displayName: "John Doe", responseStatus: "accepted"),
-                    EventAttendee(email: "manager@company.com", displayName: "Manager", responseStatus: "accepted")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "jennifer.walsh@advisor.com", displayName: "Dr. Jennifer Walsh (Board Advisor)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "manager@company.com", displayName: "Manager"),
-                organizer: EventOrganizer(email: "manager@company.com", displayName: "Manager"),
+                creator: EventCreator(email: "jennifer.walsh@advisor.com", displayName: "Dr. Jennifer Walsh"),
+                organizer: EventOrganizer(email: "jennifer.walsh@advisor.com", displayName: "Dr. Jennifer Walsh"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
                 reminders: EventReminders(useDefault: false, overrides: [
-                    ReminderOverride(method: "popup", minutes: 15)
+                    ReminderOverride(method: "popup", minutes: 15),
+                    ReminderOverride(method: "email", minutes: 60)
                 ])
             )
-            events.append(oneOnOneEvent)
+            events.append(advisorEvent)
         }
         
         // Random additional events for variety
         if dayOffset % 3 == 0 && !isWeekend {
             let randomEvent = CalendarEvent(
                 id: "sample_random_\(dayOffset)_\(UUID().uuidString)",
-                summary: "Project Planning",
-                description: "Ad-hoc project planning session to discuss upcoming features and technical requirements.",
-                location: "Conference Room B",
+                summary: "Media Interview - TechCrunch",
+                description: "Media interview with TechCrunch reporter covering our Series B funding and AI product launch. Sarah Martinez reached out after seeing our demo at Disrupt SF. Need to discuss: 1) Company growth story and market opportunity, 2) AI differentiation strategy, 3) Future product roadmap, 4) Market trends and competitive landscape. Previous email exchange shows interest in our enterprise traction and technical innovation. Prepare: Key talking points, metrics summary, demo environment ready. Follow-up: Potential feature article opportunity if interview goes well.",
+                location: "TechCrunch Office - San Francisco",
                 start: EventDateTime(
                     dateTime: formatter.string(from: calendar.date(bySettingHour: 13, minute: 0, second: 0, of: date) ?? date),
                     timeZone: TimeZone.current.identifier
@@ -396,17 +449,20 @@ class DataMigrationService {
                     timeZone: TimeZone.current.identifier
                 ),
                 attendees: [
-                    EventAttendee(email: "john.doe@company.com", displayName: "John Doe", responseStatus: "accepted"),
-                    EventAttendee(email: "architect@company.com", displayName: "System Architect", responseStatus: "accepted")
+                    EventAttendee(email: "ceo@company.com", displayName: "Alex Chen (CEO)", responseStatus: "accepted"),
+                    EventAttendee(email: "sarah.martinez@techcrunch.com", displayName: "Sarah Martinez (TechCrunch)", responseStatus: "accepted")
                 ],
-                creator: EventCreator(email: "john.doe@company.com", displayName: "John Doe"),
-                organizer: EventOrganizer(email: "john.doe@company.com", displayName: "John Doe"),
+                creator: EventCreator(email: "sarah.martinez@techcrunch.com", displayName: "Sarah Martinez"),
+                organizer: EventOrganizer(email: "sarah.martinez@techcrunch.com", displayName: "Sarah Martinez"),
                 status: "confirmed",
                 transparency: "opaque",
                 visibility: "private",
                 created: formatter.string(from: Date()),
                 updated: formatter.string(from: Date()),
-                reminders: EventReminders(useDefault: true, overrides: [])
+                reminders: EventReminders(useDefault: false, overrides: [
+                    ReminderOverride(method: "popup", minutes: 30),
+                    ReminderOverride(method: "email", minutes: 120)
+                ])
             )
             events.append(randomEvent)
         }
